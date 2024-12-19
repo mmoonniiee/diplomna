@@ -1,0 +1,14 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "school.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Martina Bikova",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
