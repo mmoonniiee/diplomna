@@ -21,7 +21,7 @@ const pool = new Pool({
     create table if not exists School (
       id int not null serial primary key,
       name not null varchar(256),
-      domain not null varchar(32) check(domain like "@%"),
+      domain not null varchar(32) check(domain like "@%") unique,
       type school_type not null
     )`);
 
@@ -35,7 +35,7 @@ const pool = new Pool({
           references School(id)
     )`);
 
-    //teachers & staff
+    //TODO: teachers & staff
     await pool.query(`
     create table if not exists Teacher(
       id int not null serial primary key
@@ -46,7 +46,7 @@ const pool = new Pool({
       id int not null serial primary key
     )`)
     
-    //check grad_year > current
+    //TODO: check grad_year > current
     await pool.query(`
     create table if not exists Class(
       id int not null serial primary key,
@@ -55,7 +55,7 @@ const pool = new Pool({
       constraint class_teacher foreign key(class_teacher) references Teacher(id)
     )`)
 
-    //check email 
+    //TODO: check email 
     await pool.query(`
     create table if not exists Student(
       id int not null serial primary key,
@@ -67,7 +67,7 @@ const pool = new Pool({
     await pool.query(`
     create type semester as ENUM("first", "second", "both")`)
 
-    //check for chorarium?
+    //TODO: check for chorarium?
     await pool.query(`
     create table if not exists Subject(
       id int not null serial primary key,
@@ -77,6 +77,19 @@ const pool = new Pool({
     )`)
 
     //tables class_subject & teacher_subject
+    await pool.query(`
+    create table if not exists ClassSubject(
+      id int not null serial primary key,
+      constraint class_subject foreign key(class_subject) references Class(id),
+      constraint subject_class foreign key(subject_class) references Subject(id)
+    )`)
+
+    await pool.query(`
+    create table if not exists TeacherSubject(
+      id int not null serial primary key, 
+      constraint teacher_subject foreign key(teacher_subject) references Teacher(id),
+      cosntraint subject_teacher foreign key(subject_teacher) references Subject(id)
+    )`)
 
     await pool.query(`
     create type week_type as ENUM("odd", "even", "both")`)
@@ -84,7 +97,6 @@ const pool = new Pool({
     await pool.query(`
     create type weekday as ENUM("monday", "tuesday", "wednesday", "thursday", "friday")`)
 
-    //weekday??????
     await pool.query(`
     create table if not exists Chas(
       id int serial primary key,
@@ -96,18 +108,39 @@ const pool = new Pool({
       semester semester not null
     )`)
     }
+
   //add & remove school 
+  export async function addSchool(name, domain, type) {
+    await pool.query("insert into School(name, domain, type) values($1, $2, $3)", name, domain, type)
+  }
+
+  export async function removeSchool(domain) {
+    await pool.query("delete from School where domain = $1", domain)
+  }
 
   //add & remove student
+  //TODO: fix school
+  export async function addStudent(name, email, school){
+    await pool.query("insert into Student(name, email, school) values($1, $2, $3)", name, email, school)
+  }
 
-  //format classes?
+  export async function removeStudent() {
+    //TODO: remove
+  }
 
-  //add & remove staff
+  //TODO: format classes?
 
-  //add & remove subject
+  //TODO: add & remove staff
 
-  //get teacher's subjects
+  //TODO: add & remove subject
 
-  //get class' subjects
+  //TODO: add subjects to teachers
 
-  //insert into schedule table
+  //TODO: get teacher's subjects
+  export async function getTeacherSubjects() {
+    await pool.query("select")
+  }
+
+  //TODO: get class' subjects
+
+  //TODO: insert into schedule table
