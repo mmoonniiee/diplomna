@@ -118,10 +118,32 @@ const pool = new Pool({
     await pool.query("delete from School where domain = $1", domain)
   }
 
+  const getSchoolId = async (domain) => {
+    try {
+      result = await pool.query(`select id from School where domain = $1`, domain);
+      if (result.rows.lenght > 0) {
+        return result.row[0].domain;
+      }
+      else {
+        throw new Error("School domain not found")
+      } 
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   //add & remove student
-  //TODO: fix school
-  export async function addStudent(name, email, school){
-    await pool.query("insert into Student(name, email, school) values($1, $2, $3)", name, email, school)
+  //TODO: parse email for school domain
+  export async function addStudent(name, email){
+    try{
+      school_id = getSchoolId(domain);
+    }
+    catch (error) {
+      console.error(error);
+    }
+    await pool.query("insert into Student(name, email, student_school) values($1, $2, $3)", name, email, school_id)
   }
 
   export async function removeStudent() {
