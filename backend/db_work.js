@@ -55,7 +55,6 @@ const pool = new Pool({
       constraint class_teacher foreign key(class_teacher) references Teacher(id)
     )`);
 
-    //TODO: check email 
     await pool.query(`
     create table if not exists Student(
       id int not null serial primary key,
@@ -86,8 +85,8 @@ const pool = new Pool({
     await pool.query(`
     create table if not exists TeacherSubject(
       id int not null serial primary key, 
-      constraint teacher_subject foreign key(teacher_subject) references Teacher(id),
-      cosntraint subject_teacher foreign key(subject_teacher) references Subject(id)
+      constraint teacher_id foreign key(teacher_id) references Teacher(id),
+      cosntraint subject_id foreign key(subject_id) references Subject(id)
     )`);
 
     await pool.query(`
@@ -169,19 +168,49 @@ const pool = new Pool({
     await pool.query("delete from Student where id = $1", student_id);
   }
 
-  //TODO: format classes?
+  //TODO: format classes? - idk what that was supposed to mean, put students into classess???
 
   //TODO: add & remove staff
+
+  //TODO: split staff into teachers and admins
 
   //TODO: add & remove subject
 
   //TODO: add subjects to teachers
 
+  //TODO: add subjects to classess 
+
+  const getTeacherId = async (email) => {
+    try {
+      result = await pool.query('select id from Teacher where email = $1', email);
+      if (result.row[0].lenght > 0)
+        return result.row[0].id;
+      else 
+        throw new Error("Teacher with that email not found");
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+  
   //get teacher's subjects
   export async function getTeacherSubjects() {
-    result = await pool.query("select * from TeacherSubject right join Teacher on TeacherSubject.teacher_subject = Teacher.id");
+    const teacher_id = getTeacherId;
+    const result = await pool.query(`select name, chorarium, semester from Subject 
+    left join TeacherSubject on TeacherSubject.subject_id = Subject.id 
+    where TeacherSubject.teacher_id = $1`, teacher_id);
+    //TODO: reformat result into an array to return
   }
 
-  //TODO: get class' subjects
+  //get class' subjects
+  //TODO: get class id???? somehow?????
+  export async function getClassSubjects() {
+    const teacher_id = 1; //TEMPORARY
+    const result = await pool.query(`select name, chorarium, semester from Subject 
+    left join ClassSubject on ClassSubject.subject_id = Subject.id 
+    where ClassSubject.class_id = $1`, class_id);
+    //TODO: reformat result into an array to return
+  }
 
   //TODO: insert into schedule table
