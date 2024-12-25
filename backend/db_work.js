@@ -39,12 +39,12 @@ const pool = new Pool({
     await pool.query(`
     create table if not exists Teacher(
       id int not null serial primary key
-    )`)
+    )`);
 
     await pool.query(`
     create table if not exists Admin(
       id int not null serial primary key
-    )`)
+    )`);
     
     //TODO: check grad_year > current
     await pool.query(`
@@ -53,7 +53,7 @@ const pool = new Pool({
       paralelka varchar(5) not null unique,
       graduation_year int not null,
       constraint class_teacher foreign key(class_teacher) references Teacher(id)
-    )`)
+    )`);
 
     //TODO: check email 
     await pool.query(`
@@ -62,19 +62,18 @@ const pool = new Pool({
       name varchar(64) not null,
       email varchar(32) not null check(email like "%@%"),
       constraint student_school foreign key(student_school) refferences School(id)
-    )`)
+    )`);
 
     await pool.query(`
-    create type semester as ENUM("first", "second", "both")`)
+    create type semester as ENUM("first", "second", "both")`);
 
-    //TODO: check for chorarium?
     await pool.query(`
     create table if not exists Subject(
       id int not null serial primary key,
       name varchar(64) not null,
-      chorarium int not null,
+      chorarium int not null check(chorarium < 40),
       semester semester notnull
-    )`)
+    )`);
 
     //tables class_subject & teacher_subject
     await pool.query(`
@@ -82,20 +81,20 @@ const pool = new Pool({
       id int not null serial primary key,
       constraint class_subject foreign key(class_subject) references Class(id),
       constraint subject_class foreign key(subject_class) references Subject(id)
-    )`)
+    )`);
 
     await pool.query(`
     create table if not exists TeacherSubject(
       id int not null serial primary key, 
       constraint teacher_subject foreign key(teacher_subject) references Teacher(id),
       cosntraint subject_teacher foreign key(subject_teacher) references Subject(id)
-    )`)
+    )`);
 
     await pool.query(`
-    create type week_type as ENUM("odd", "even", "both")`)
+    create type week_type as ENUM("odd", "even", "both")`);
 
     await pool.query(`
-    create type weekday as ENUM("monday", "tuesday", "wednesday", "thursday", "friday")`)
+    create type weekday as ENUM("monday", "tuesday", "wednesday", "thursday", "friday")`);
 
     await pool.query(`
     create table if not exists Chas(
@@ -106,16 +105,16 @@ const pool = new Pool({
       start_time time not null,
       end_time time not null,
       semester semester not null
-    )`)
+    )`);
     }
 
   //add & remove school 
   export async function addSchool(name, domain, type) {
-    await pool.query("insert into School(name, domain, type) values($1, $2, $3)", name, domain, type)
+    await pool.query("insert into School(name, domain, type) values($1, $2, $3)", name, domain, type);
   }
 
   export async function removeSchool(domain) {
-    await pool.query("delete from School where domain = $1", domain)
+    await pool.query("delete from School where domain = $1", domain);
   }
 
   const getSchoolId = async (domain) => {
@@ -125,7 +124,7 @@ const pool = new Pool({
         return result.row[0].domain;
       }
       else {
-        throw new Error("School domain not found")
+        throw new Error("School domain not found");
       } 
     }
     catch (error) {
@@ -134,10 +133,24 @@ const pool = new Pool({
     }
   }
 
+  const getStudentId = async (email) => {
+    try {
+      result = await pool.query('select id from Student where email = $1', email);
+      if (result.row[0].lenght > 0)
+        return result.row[0].id;
+      else 
+        throw new Error("Student with that email not found");
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   //add & remove student
-  //TODO: parse email for school domain
   export async function addStudent(name, email){
-    try{
+    //TODO: parse email for school domain
+    try {
       school_id = getSchoolId(domain);
     }
     catch (error) {
@@ -146,8 +159,14 @@ const pool = new Pool({
     await pool.query("insert into Student(name, email, student_school) values($1, $2, $3)", name, email, school_id)
   }
 
-  export async function removeStudent() {
-    //TODO: remove
+  export async function removeStudent(email) {
+    try {
+      student_id = getStudentId(email);
+    }
+    catch (error) {
+      console.error(error);
+    }
+    await pool.query("delete from Student where id = $1", student_id);
   }
 
   //TODO: format classes?
@@ -158,9 +177,9 @@ const pool = new Pool({
 
   //TODO: add subjects to teachers
 
-  //TODO: get teacher's subjects
+  //get teacher's subjects
   export async function getTeacherSubjects() {
-    await pool.query("select")
+    result = await pool.query("select * from TeacherSubject right join Teacher on TeacherSubject.teacher_subject = Teacher.id");
   }
 
   //TODO: get class' subjects
