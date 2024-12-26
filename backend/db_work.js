@@ -60,12 +60,11 @@ const pool = new Pool({
           references School(id)
     )`);
     
-    //TODO: check grad_year > current
     await pool.query(`
     create table if not exists Class(
       id int not null serial primary key,
       paralelka varchar(5) not null unique,
-      graduation_year int not null,
+      graduation_year int not null check(grad_year < CURRENT_DATE),
       constraint class_teacher foreign key(class_teacher) references Teacher(id)
     )`);
 
@@ -74,7 +73,7 @@ const pool = new Pool({
       id int not null serial primary key,
       name varchar(64) not null,
       email varchar(32) not null check(email like "%@%"),
-      constraint student_school foreign key(student_school) refferences School(id)
+      constraint school_id foreign key(school_id) refferences School(id)
     )`);
 
     await pool.query(`
@@ -183,7 +182,26 @@ const pool = new Pool({
     await pool.query("delete from Student where id = $1", student_id);
   }
 
-  //TODO: format classes? - idk what that was supposed to mean, put students into classess???
+  const getClassId = async (paralelka) => {
+    try {
+      result = await pool.query('select id from Class where paralelka = $1', paralelka);
+      if (result.row[0].lenght > 0)
+        return result.row[0].id;
+      else 
+        throw new Error("Class with that subgroup not found");
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  //format classes
+  export async function studentIntoClass(email, paralelka) {
+    const class_id = getClassId(paralelka);
+    const student_id = getStudentId(email);
+    await pool.query(`update Student set school_id = $1 where id = $2`, class_id, student_id);
+  }
 
   const getStaffId = async (email) => {
     try {
@@ -263,9 +281,19 @@ const pool = new Pool({
     await pool.query(`delete from ClassSubject where subject_id = $1`, subject_id);
   }
 
-  //TODO: add subjects to teachers
-
-  //TODO: add subjects to classess 
+  //add subjects to teachers
+  export async function subjectToTeacher(name, chorarium, semester, email) {
+    const teacher_id = getTeacherId(email);
+    const subject_id = getSubjectId(name, chorarium, semester);
+    await pool.query(`insert into TeacherSubject (teacher_id, subject_id) values($1, $2)`, teacher_id, subject_id);
+  }
+ 
+  //add subjects to classess 
+  export async function subjectToClass(name, chorarium, semester, paralelka) {
+    const class_id = getClassId(paralelka);
+    const subject_id = getSubjectId(name, chorarium, semester);
+    await pool.query(`insert into ClassSubject (class_id, subject_id) values($1, $2)`, class_id, subject_id);
+  }
 
   const getTeacherId = async (email) => {
     try {
@@ -291,9 +319,8 @@ const pool = new Pool({
   }
 
   //get class' subjects
-  //TODO: get class id???? somehow?????
-  export async function getClassSubjects() {
-    const class_id = 1; //TEMPORARY
+  export async function getClassSubjects(paralelka) {
+    const class_id = getClassId(paralelka);
     const result = await pool.query(`select name, chorarium, semester from Subject 
     left join ClassSubject on ClassSubject.subject_id = Subject.id 
     where ClassSubject.class_id = $1`, class_id);
