@@ -35,15 +35,29 @@ const pool = new Pool({
           references School(id)
     )`);
 
-    //TODO: teachers & staff
+    await pool.query(`
+    create type teacher_type as ENUM("full-time", "part-time")`);
+
     await pool.query(`
     create table if not exists Teacher(
-      id int not null serial primary key
+      id int not null primary key,
+      name varchar(64) not null,
+      email varchar(64) not null,
+      type teacher_type not null,
+      chorarium int not null check(chorarium < 40),
+      constraint teacher_school
+        foreign key(teacher_school)
+          references School(id)
     )`);
 
     await pool.query(`
     create table if not exists Admin(
-      id int not null serial primary key
+      id int not null primary key,
+      name varchar(64) not null,
+      email varchar(64) not null, 
+      constraint admin_school
+        foreign key(admin_school)
+          references School(id)
     )`);
     
     //TODO: check grad_year > current
@@ -148,7 +162,8 @@ const pool = new Pool({
 
   //add & remove student
   export async function addStudent(name, email){
-    //TODO: parse email for school domain
+    const match = email.match(/@(.*)/); 
+    const domain = match[0];
     try {
       school_id = getSchoolId(domain);
     }
@@ -170,11 +185,83 @@ const pool = new Pool({
 
   //TODO: format classes? - idk what that was supposed to mean, put students into classess???
 
-  //TODO: add & remove staff
+  const getStaffId = async (email) => {
+    try {
+      result = await pool.query('select id from Staff where email = $1', email);
+      if (result.row[0].lenght > 0)
+        return result.row[0].id;
+      else 
+        throw new Error("Staff with that email not found");
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
 
-  //TODO: split staff into teachers and admins
+  //add & remove staff
+  export async function addStaff(name, email){
+    const match = email.match(/@(.*)/); 
+    const domain = match[0];
+    try {
+      school_id = getSchoolId(domain);
+    }
+    catch (error) {
+      console.error(error);
+    }
+    await pool.query("insert into Staff(name, email, student_school) values($1, $2, $3)", name, email, school_id)
+  }
 
-  //TODO: add & remove subject
+  export async function removeStaff(email) {
+    try {
+      staff_id = getStaffId(email);
+    }
+    catch (error) {
+      console.error(error);
+    }
+    await pool.query("delete from Staff where id = $1", staff_id);
+    await pool.query("delete from Teacher where id = $1", staff_id);
+    await pool.query("delete from Admin where id = $1", staff_id);
+  }
+
+  //split staff into teachers and admins
+  export async function staffIntoTeacher(email, type, chorarium) {
+    staff_id = getStaffId(email);
+    await pool.query(`insert into Teacher (id, name, email, type, chorarium, school_id)
+    select id, name, email, $1, $2, staff_school from Staff`, type, chorarium);
+  }
+ 
+  export async function staffIntoAdmin(email) {
+    staff_id = getStaffId(email);
+    await pool.query(`insert into Admin (id, name, email, school_id)
+    select id, name, email, staff_school from Staff`);
+  }
+ 
+  const getSubjectId = async (name, chorarium, semester) => {
+    try {
+      result = await pool.query('select id from Subject where name = $1, chorarium = $2, semester = $3', name, chorarium, semester);
+      if (result.row[0].lenght > 0)
+        return result.row[0].id;
+      else 
+        throw new Error("Subject like that not found");
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+ 
+  //add & remove subject
+  export async function addSubject(name, chorarium, semester) {
+    await pool.query(`insert into Subject (name, chorarium, semester) values ($1, $2, $3)`, name, chorarium, semester);
+  }
+ 
+  export async function removeSubject(name, chorarium, semester) {
+    const subject_id = getSubjectId(name, chorarium, semester);
+    await pool.query(`delete from Subject where id = $1`, subject_id);
+    await pool.query(`delete from TeacherSubject where subject_id = $1`, subject_id);
+    await pool.query(`delete from ClassSubject where subject_id = $1`, subject_id);
+  }
 
   //TODO: add subjects to teachers
 
@@ -206,7 +293,7 @@ const pool = new Pool({
   //get class' subjects
   //TODO: get class id???? somehow?????
   export async function getClassSubjects() {
-    const teacher_id = 1; //TEMPORARY
+    const class_id = 1; //TEMPORARY
     const result = await pool.query(`select name, chorarium, semester from Subject 
     left join ClassSubject on ClassSubject.subject_id = Subject.id 
     where ClassSubject.class_id = $1`, class_id);
