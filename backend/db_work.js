@@ -1,10 +1,11 @@
-import {Pool} from 'pg';
+import pkg from 'pg';
+const {Pool} = pkg;
 
 const pool = new Pool({
     host: 'localhost',
-    user: 'pgsql',
+    user: 'postgres',
     database: 'diplomna',
-    password: 'AzsymMoon',
+    password: 'pgsqlpassword',
     port: 5432,
   });
 
@@ -87,19 +88,13 @@ const pool = new Pool({
       semester semester notnull
     )`);
 
-    //tables class_subject & teacher_subject
+    //tables subject_class_teacher 
     await pool.query(`
-    create table if not exists ClassSubject(
+    create table if not exists SubjectClassTeacher(
       id int not null serial primary key,
-      constraint class_subject foreign key(class_subject) references Class(id),
-      constraint subject_class foreign key(subject_class) references Subject(id)
-    )`);
-
-    await pool.query(`
-    create table if not exists TeacherSubject(
-      id int not null serial primary key, 
-      constraint teacher_id foreign key(teacher_id) references Teacher(id),
-      cosntraint subject_id foreign key(subject_id) references Subject(id)
+      constraint subject_id foreign key(subject_id) references Subject(id)
+      constraint class_id foreign key(class_id) references Class(id),
+      constraint teacher_id foreign key(teacher_id) references Teacher(id)
     )`);
 
     await pool.query(`
@@ -259,7 +254,7 @@ const pool = new Pool({
     const result = await pool.query(`select exists (select 1 from teacher_type 
       where typname = 'teacher_type' 
       and $1::status_enum is not null)`);
-      return (result.rows[0].exists);
+      return result.rows[0].exists;
   }
 
   //split staff into teachers and admins
@@ -301,6 +296,7 @@ const pool = new Pool({
     await pool.query(`delete from ClassSubject where subject_id = $1`, subject_id);
   }
 
+  //TODO: fix this mess
   //add subjects to teachers
   export async function subjectToTeacher(name, chorarium, semester, email) {
     const teacher_id = getTeacherId(email);
@@ -348,4 +344,4 @@ const pool = new Pool({
   }
 
   //TODO: insert into schedule table
-  export async function insertIntoSchedule();
+  export async function insertIntoSchedule(){}

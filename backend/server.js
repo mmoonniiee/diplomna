@@ -1,7 +1,6 @@
-import {http} from 'http';
+import http from 'http';
 import express from 'express';
-import * as db from `.db_work`;
-import { isSchoolType } from './db_work';
+import * as db from './db_work.js';
 
 const server = http.createServer(async (req, res) => {
     //TODO: route endpoints 
