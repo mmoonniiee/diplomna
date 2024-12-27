@@ -121,6 +121,13 @@ const pool = new Pool({
     }
 
   //add & remove school 
+  export async function isSchoolType(value) {
+    const result = await pool.query(`select exists (select 1 from school_type 
+      where typname = 'school_type' 
+      and $1::status_enum is not null)`);
+      return (result.rows[0].exists);
+  }
+
   export async function addSchool(name, domain, type) {
     await pool.query("insert into School(name, domain, type) values($1, $2, $3)", name, domain, type);
   }
@@ -160,6 +167,7 @@ const pool = new Pool({
   }
 
   //add & remove student
+  //TODO: error for nonexistent school?
   export async function addStudent(name, email){
     const match = email.match(/@(.*)/); 
     const domain = match[0];
@@ -180,6 +188,11 @@ const pool = new Pool({
       console.error(error);
     }
     await pool.query("delete from Student where id = $1", student_id);
+  }
+
+  //add & remove class
+  export async function addClass(paralelka, grad_year) {
+    await pool.query(`insert into Class (paralelka, graduation_year) values($1, $2)`, paralelka, grad_year);
   }
 
   const getClassId = async (paralelka) => {
@@ -240,6 +253,13 @@ const pool = new Pool({
     await pool.query("delete from Staff where id = $1", staff_id);
     await pool.query("delete from Teacher where id = $1", staff_id);
     await pool.query("delete from Admin where id = $1", staff_id);
+  }
+
+  export async function isTeacherType(value) {
+    const result = await pool.query(`select exists (select 1 from teacher_type 
+      where typname = 'teacher_type' 
+      and $1::status_enum is not null)`);
+      return (result.rows[0].exists);
   }
 
   //split staff into teachers and admins
@@ -328,3 +348,4 @@ const pool = new Pool({
   }
 
   //TODO: insert into schedule table
+  export async function insertIntoSchedule();
