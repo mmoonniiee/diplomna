@@ -1,40 +1,48 @@
 import http from 'http';
 import express from 'express';
 import * as db from './db_work.js';
+import { url } from 'inspector';
 
 const server = http.createServer(async (req, res) => {
     //TODO: route endpoints 
     const app = express();
     app.use(express.json());
 
-    app.all('/api/database', (req, res) => {
+    app.all('/api', (req, res) => {
         if(method = "POST") {
-            if(header = "new-school") {
+            if(url === '/school') {
                 const {name, domain, type} = req.body;
                 if(!db.isSchoolType(type)){
-                    throw new Error("Given type is not correct");
+                    throw new Error("Invalid school type");
                 }
                 db.addSchool(name, domain, type);
-            } else if(header = "new-student") {
+            } else if(url === '/students') {
                 db.addStudent(req.name, req.email);
-            } else if(header = "new-staff") {
+            } else if(url === '/staff') {
                 db.addStaff(req.name, req.email);
-            } else if(header = "new-teacher") {
+            } else if(url === '/teacher') {
                 const {email, type, chorarium} = req;
-
-            } else if(header = "new-admin"){
+                if(!db.isTeacherType(type)) {
+                    throw new Error("Invalid teacher type");
+                }
+                db.staffIntoTeacher(email, type, chorarium);
+            } else if(url === 'admin'){
                 db.staffIntoAdmin(req.email);
-                //TODO: da se dobyrshi, ama e 2:17am
-            }
-            
-            
-            else {
+            } else if(url === '/subject'){
+                const {name, chorarium, semester} = req;
+                if(!db.isSemesterType(semester)){
+                    throw new Error("Invalid semester");
+                }
+                db.addSubject(name, chorarium, semester);
+            } else if(url === '/schedule') {
+                //no
+            } else {
                 throw new Error("invalid request");
             }
-        } else if(method = 'DELETE') {
-            if(header = "remove-school"){
-                const domain = req.body;
-                db.removeSchool(domain);
+        } 
+        else if(method = 'DELETE') {
+            if(url === 'school'){
+                db.removeSchool(req.domain);
             } else {
                 throw new Error("invalid request");
             }
@@ -42,4 +50,9 @@ const server = http.createServer(async (req, res) => {
             throw new Error("invalid request");
         }
     });
+});
+
+const PORT = 5000;
+server.listen(PORT, () => {
+    console.log(`server listening on ${PORT}`);
 });
