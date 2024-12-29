@@ -9,7 +9,7 @@ const server = http.createServer(async (req, res) => {
     app.use(express.json());
 
     app.all('/api', (req, res) => {
-        if(method = "POST") {
+        if(method === "POST") {
             if(url === '/school') {
                 const {name, domain, type} = req.body;
                 if(!db.isSchoolType(type)){
@@ -40,7 +40,7 @@ const server = http.createServer(async (req, res) => {
                 throw new Error("invalid request");
             }
         } 
-        else if(method = 'DELETE') {
+        else if(method === 'DELETE') {
             if(url === 'school'){
                 db.removeSchool(req.domain);
             } else {
