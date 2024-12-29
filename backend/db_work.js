@@ -62,11 +62,11 @@ const pool = new Pool({
     )`);
     
     await pool.query(`
-    create table if not exists Class(
+    create table if not exists Grade(
       id int not null serial primary key,
-      paralelka varchar(5) not null unique,
+      subgroup varchar(5) not null unique,
       graduation_year int not null check(grad_year < CURRENT_DATE),
-      constraint class_teacher foreign key(class_teacher) references Teacher(id)
+      constraint grade_teacher foreign key(grade_teacher) references Teacher(id)
     )`);
 
     await pool.query(`
@@ -88,12 +88,12 @@ const pool = new Pool({
       semester semester notnull
     )`);
 
-    //tables subject_class_teacher 
+    //tables subject_grade_teacher 
     await pool.query(`
-    create table if not exists SubjectClassTeacher(
+    create table if not exists SubjectGradeTeacher(
       id int not null serial primary key,
       constraint subject_id foreign key(subject_id) references Subject(id)
-      constraint class_id foreign key(class_id) references Class(id),
+      constraint grade_id foreign key(grade_id) references Grade(id),
       constraint teacher_id foreign key(teacher_id) references Teacher(id)
     )`);
 
@@ -127,124 +127,35 @@ const pool = new Pool({
     await pool.query("insert into School(name, domain, type) values($1, $2, $3)", name, domain, type);
   }
 
-  export async function removeSchool(domain) {
-    await pool.query("delete from School where domain = $1", domain);
-  }
-
-  const getSchoolId = async (domain) => {
-    try {
-      result = await pool.query(`select id from School where domain = $1`, domain);
-      if (result.rows.lenght > 0) {
-        return result.row[0].domain;
-      }
-      else {
-        throw new Error("School domain not found");
-      } 
-    }
-    catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  const getStudentId = async (email) => {
-    try {
-      result = await pool.query('select id from Student where email = $1', email);
-      if (result.row[0].lenght > 0)
-        return result.row[0].id;
-      else 
-        throw new Error("Student with that email not found");
-    }
-    catch (error) {
-      console.error(error);
-      throw error;
-    }
+  export async function removeSchool(school_id) {
+    await pool.query("delete from School where id = $1", school_id);
   }
 
   //add & remove student
-  //TODO: error for nonexistent school?
-  export async function addStudent(name, email){
-    const match = email.match(/@(.*)/); 
-    const domain = match[0];
-    try {
-      school_id = getSchoolId(domain);
-    }
-    catch (error) {
-      console.error(error);
-    }
+  export async function addStudent(name, email, school_id){
     await pool.query("insert into Student(name, email, student_school) values($1, $2, $3)", name, email, school_id)
   }
 
-  export async function removeStudent(email) {
-    try {
-      student_id = getStudentId(email);
-    }
-    catch (error) {
-      console.error(error);
-    }
+  export async function removeStudent(student_id) {
     await pool.query("delete from Student where id = $1", student_id);
   }
 
-  //add & remove class
-  export async function addClass(paralelka, grad_year) {
-    await pool.query(`insert into Class (paralelka, graduation_year) values($1, $2)`, paralelka, grad_year);
+  //add & remove grade
+  export async function addGrade(subgroup, grad_year) {
+    await pool.query(`insert into Grade (subgroup, graduation_year) values($1, $2)`, subgroup, grad_year);
   }
 
-  const getClassId = async (paralelka) => {
-    try {
-      result = await pool.query('select id from Class where paralelka = $1', paralelka);
-      if (result.row[0].lenght > 0)
-        return result.row[0].id;
-      else 
-        throw new Error("Class with that subgroup not found");
-    }
-    catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  //format classes
-  export async function studentIntoClass(email, paralelka) {
-    const class_id = getClassId(paralelka);
-    const student_id = getStudentId(email);
-    await pool.query(`update Student set school_id = $1 where id = $2`, class_id, student_id);
-  }
-
-  const getStaffId = async (email) => {
-    try {
-      result = await pool.query('select id from Staff where email = $1', email);
-      if (result.row[0].lenght > 0)
-        return result.row[0].id;
-      else 
-        throw new Error("Staff with that email not found");
-    }
-    catch (error) {
-      console.error(error);
-      throw error;
-    }
+  //format grades
+  export async function studentIntoGrade(student_id, grade_id) {
+    await pool.query(`update Student set school_id = $1 where id = $2`, grade_id, student_id);
   }
 
   //add & remove staff
-  export async function addStaff(name, email){
-    const match = email.match(/@(.*)/); 
-    const domain = match[0];
-    try {
-      school_id = getSchoolId(domain);
-    }
-    catch (error) {
-      console.error(error);
-    }
+  export async function addStaff(name, email, school_id){
     await pool.query("insert into Staff(name, email, student_school) values($1, $2, $3)", name, email, school_id)
   }
 
-  export async function removeStaff(email) {
-    try {
-      staff_id = getStaffId(email);
-    }
-    catch (error) {
-      console.error(error);
-    }
+  export async function removeStaff(staff_id) {
     await pool.query("delete from Staff where id = $1", staff_id);
     await pool.query("delete from Teacher where id = $1", staff_id);
     await pool.query("delete from Admin where id = $1", staff_id);
@@ -253,35 +164,27 @@ const pool = new Pool({
   export async function isTeacherType(value) {
     const result = await pool.query(`select exists (select 1 from teacher_type 
       where typname = 'teacher_type' 
-      and $1::status_enum is not null)`);
+      and $1::status_enum is not null)`, value);
       return result.rows[0].exists;
   }
 
   //split staff into teachers and admins
-  export async function staffIntoTeacher(email, type, chorarium) {
-    staff_id = getStaffId(email);
+  export async function staffIntoTeacher(staff_id, type, chorarium) {
     await pool.query(`insert into Teacher (id, name, email, type, chorarium, school_id)
-    select id, name, email, $1, $2, staff_school from Staff`, type, chorarium);
+    select id, name, email, $1, $2, staff_school from Staff
+    where Staff(id) = $1`, type, chorarium, staff_id);
   }
  
-  export async function staffIntoAdmin(email) {
-    staff_id = getStaffId(email);
+  export async function staffIntoAdmin(staff_id) {
     await pool.query(`insert into Admin (id, name, email, school_id)
-    select id, name, email, staff_school from Staff`);
+    select id, name, email, staff_school from Staff
+    where Staff(id) = $1`, staff_id);
   }
- 
-  const getSubjectId = async (name, chorarium, semester) => {
-    try {
-      result = await pool.query('select id from Subject where name = $1, chorarium = $2, semester = $3', name, chorarium, semester);
-      if (result.row[0].lenght > 0)
-        return result.row[0].id;
-      else 
-        throw new Error("Subject like that not found");
-    }
-    catch (error) {
-      console.error(error);
-      throw error;
-    }
+
+  export async function isSemesterType(value) {
+    const result = await pool.query(`select exists (select 1 from semester 
+      where typname = 'semester' and $1::status_enum is not null)`, value);
+      return result.rows[0].exists;
   }
  
   //add & remove subject
@@ -289,59 +192,35 @@ const pool = new Pool({
     await pool.query(`insert into Subject (name, chorarium, semester) values ($1, $2, $3)`, name, chorarium, semester);
   }
  
-  export async function removeSubject(name, chorarium, semester) {
-    const subject_id = getSubjectId(name, chorarium, semester);
+  export async function removeSubject(subject_id) {
     await pool.query(`delete from Subject where id = $1`, subject_id);
     await pool.query(`delete from TeacherSubject where subject_id = $1`, subject_id);
-    await pool.query(`delete from ClassSubject where subject_id = $1`, subject_id);
+    await pool.query(`delete from GradeSubject where subject_id = $1`, subject_id);
   }
 
-  //TODO: fix this mess
-  //add subjects to teachers
-  export async function subjectToTeacher(name, chorarium, semester, email) {
-    const teacher_id = getTeacherId(email);
-    const subject_id = getSubjectId(name, chorarium, semester);
-    await pool.query(`insert into TeacherSubject (teacher_id, subject_id) values($1, $2)`, teacher_id, subject_id);
-  }
- 
-  //add subjects to classess 
-  export async function subjectToClass(name, chorarium, semester, paralelka) {
-    const class_id = getClassId(paralelka);
-    const subject_id = getSubjectId(name, chorarium, semester);
-    await pool.query(`insert into ClassSubject (class_id, subject_id) values($1, $2)`, class_id, subject_id);
-  }
-
-  const getTeacherId = async (email) => {
-    try {
-      result = await pool.query('select id from Teacher where email = $1', email);
-      if (result.row[0].lenght > 0)
-        return result.row[0].id;
-      else 
-        throw new Error("Teacher with that email not found");
-    }
-    catch (error) {
-      console.error(error);
-      throw error;
-    }
+  //add subjects to grades and teachers
+  export async function subjectTeacherGrade(subject_id, grade_id, teacher_id) {
+    await pool.query(`insert into SubjectGradeTeacher (subject_id, grade_id, teacher_id) 
+    values ($1, $2, $3)`, subject_id, grade_id, teacher_id);
   }
   
   //get teacher's subjects
-  export async function getTeacherSubjects() {
-    const teacher_id = getTeacherId;
+  export async function getTeacherSubjects(teacher_id) {
     const result = await pool.query(`select name, chorarium, semester from Subject 
-    left join TeacherSubject on TeacherSubject.subject_id = Subject.id 
-    where TeacherSubject.teacher_id = $1`, teacher_id);
+    left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
+    where SCT.teacher_id = $1`, teacher_id);
     //TODO: reformat result into an array to return
   }
 
-  //get class' subjects
-  export async function getClassSubjects(paralelka) {
-    const class_id = getClassId(paralelka);
+  //get grade' subjects
+  export async function getGradeSubjects(grade_id) {
     const result = await pool.query(`select name, chorarium, semester from Subject 
-    left join ClassSubject on ClassSubject.subject_id = Subject.id 
-    where ClassSubject.class_id = $1`, class_id);
+    left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
+    where SCT.grade_id = $1`, grade_id);
     //TODO: reformat result into an array to return
   }
 
   //TODO: insert into schedule table
-  export async function insertIntoSchedule(){}
+  export async function insertIntoSchedule(){
+    //no
+  }
