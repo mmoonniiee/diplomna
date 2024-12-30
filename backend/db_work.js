@@ -119,12 +119,14 @@ const pool = new Pool({
   export async function isSchoolType(value) {
     const result = await pool.query(`select exists (select 1 from school_type 
       where typname = 'school_type' 
-      and $1::status_enum is not null)`);
+      and $1::status_enum is not null)`, value);
       return (result.rows[0].exists);
   }
 
   export async function addSchool(name, domain, type) {
-    await pool.query("insert into School(name, domain, type) values($1, $2, $3)", name, domain, type);
+    const result = await pool.query(`insert into School(name, domain, type) values($1, $2, $3)
+    returning id, name`, name, domain, type);
+    return result;  
   }
 
   export async function removeSchool(school_id) {
@@ -133,16 +135,26 @@ const pool = new Pool({
 
   //add & remove student
   export async function addStudent(name, email, school_id){
-    await pool.query("insert into Student(name, email, student_school) values($1, $2, $3)", name, email, school_id)
+    const result = await pool.query(`insert into Student(name, email, student_school) values($1, $2, $3)
+    returning id, name`, name, email, school_id);
+    return result;
   }
 
   export async function removeStudent(student_id) {
     await pool.query("delete from Student where id = $1", student_id);
   }
 
+  export async function getStudent(student_id, school_id) {
+    const result = await pool.query(`select name, email from Student 
+    where Student(id) = $1 and Student(school_id) = $2`, student_id, school_id);
+    return result;
+  }
+
   //add & remove grade
   export async function addGrade(subgroup, grad_year) {
-    await pool.query(`insert into Grade (subgroup, graduation_year) values($1, $2)`, subgroup, grad_year);
+    const result = await pool.query(`insert into Grade (subgroup, graduation_year) values($1, $2) 
+    returning id, subgroup`, subgroup, grad_year);
+    return result;
   }
 
   //format grades
@@ -152,13 +164,20 @@ const pool = new Pool({
 
   //add & remove staff
   export async function addStaff(name, email, school_id){
-    await pool.query("insert into Staff(name, email, student_school) values($1, $2, $3)", name, email, school_id)
+    const result = await pool.query(`insert into Staff(name, email, student_school) values($1, $2, $3)
+    returnig id, name`, name, email, school_id);
+    return result;
   }
 
   export async function removeStaff(staff_id) {
     await pool.query("delete from Staff where id = $1", staff_id);
     await pool.query("delete from Teacher where id = $1", staff_id);
     await pool.query("delete from Admin where id = $1", staff_id);
+  }
+
+  export async function getStaff(staff_id) {
+    const result = await pool.query(`select name, email from Staff where Staff(id) = $1`, staff_id);
+    return result;
   }
 
   export async function isTeacherType(value) {
@@ -170,15 +189,21 @@ const pool = new Pool({
 
   //split staff into teachers and admins
   export async function staffIntoTeacher(staff_id, type, chorarium) {
-    await pool.query(`insert into Teacher (id, name, email, type, chorarium, school_id)
+    const result = await pool.query(`insert into Teacher (id, name, email, type, chorarium, school_id)
     select id, name, email, $1, $2, staff_school from Staff
-    where Staff(id) = $1`, type, chorarium, staff_id);
+    where Staff(id) = $1 returning id, name`, type, chorarium, staff_id);
+    return result;
+  }
+
+  export async function getTeacher(teacher_id) {
+    const result = await pool.query(`select name, email, chorarium, type from Teacher`)
   }
  
   export async function staffIntoAdmin(staff_id) {
-    await pool.query(`insert into Admin (id, name, email, school_id)
+    const result = await pool.query(`insert into Admin (id, name, email, school_id)
     select id, name, email, staff_school from Staff
-    where Staff(id) = $1`, staff_id);
+    where Staff(id) = $1 returning id, name`, staff_id);
+    return result;
   }
 
   export async function isSemesterType(value) {
@@ -189,7 +214,9 @@ const pool = new Pool({
  
   //add & remove subject
   export async function addSubject(name, chorarium, semester) {
-    await pool.query(`insert into Subject (name, chorarium, semester) values ($1, $2, $3)`, name, chorarium, semester);
+    const result = await pool.query(`insert into Subject (name, chorarium, semester) values ($1, $2, $3)
+    returning id, name`, name, chorarium, semester);
+    return result;
   }
  
   export async function removeSubject(subject_id) {
@@ -200,8 +227,9 @@ const pool = new Pool({
 
   //add subjects to grades and teachers
   export async function subjectTeacherGrade(subject_id, grade_id, teacher_id) {
-    await pool.query(`insert into SubjectGradeTeacher (subject_id, grade_id, teacher_id) 
-    values ($1, $2, $3)`, subject_id, grade_id, teacher_id);
+    const result = await pool.query(`insert into SubjectGradeTeacher (subject_id, grade_id, teacher_id) 
+    values ($1, $2, $3) returning id`, subject_id, grade_id, teacher_id);
+    return result;
   }
   
   //get teacher's subjects
@@ -210,6 +238,7 @@ const pool = new Pool({
     left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
     where SCT.teacher_id = $1`, teacher_id);
     //TODO: reformat result into an array to return
+    return result;
   }
 
   //get grade' subjects
@@ -218,6 +247,7 @@ const pool = new Pool({
     left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
     where SCT.grade_id = $1`, grade_id);
     //TODO: reformat result into an array to return
+    return result;
   }
 
   //TODO: insert into schedule table
