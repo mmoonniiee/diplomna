@@ -2,6 +2,7 @@ import http from 'http';
 import express from 'express';
 import * as db from './db_work.js';
 import { resourceLimits } from 'worker_threads';
+import { Pool } from 'pg';
 
 const server = http.createServer(async (req, res) => {
   //TODO: route endpoints 
@@ -17,19 +18,19 @@ const server = http.createServer(async (req, res) => {
     res.send(result);
   });
 
-  app.post('/students', (req, res) => {
+  app.post('/school/:id/students', (req, res) => {
     const {name, email} = req.body;
     const result = db.addStudent(name, email);
     res.send(result);
   });
 
-  app.post('/staff', (req, res) => {
+  app.post('/school/:id/staff', (req, res) => {
     const {name, email} = req.body;
     const result = db.addStaff(name, email);
     res.send(result);
   });
 
-  app.post('/teacher', (req, res) => {
+  app.post('/school/:id/teacher', (req, res) => {
     const {id, type, chorarium} = req;
     if(!db.isTeacherType(type)) {
       throw new Error("Invalid teacher type");
@@ -38,18 +39,23 @@ const server = http.createServer(async (req, res) => {
     res.send(result);
   });
 
-  app.post('/admin', (req, res) => {
+  app.post('/school/:id/admin', (req, res) => {
     const email = req.body
     const result = db.staffIntoAdmin(email);
     res.send(result);
   });
 
-  app.post('/subject', (req, res) => {
-    const {name, chorarium, semester} = req;
+  app.post('/school/:id/subject', (req, res) => {
+    const {name, chorarium, semester} = req.body;
     if(!db.isSemesterType(semester)){
       throw new Error("Invalid semester");
     }
-    const result = db.addSubject(name, chorarium, semester);
+    const result = db.addSubject(name, chorarium, semester, req.params.id);
+    res.send(result);
+  });
+
+  app.post('/subject/:subject_id/teacher/:teacher_id/grade/:grade_id', (req, res) => {
+    const result = db.subjectTeacherGrade(req.params.subject_id, req.params.grade_id, req.params.teacher_id);
     res.send(result);
   });
 
@@ -61,13 +67,13 @@ const server = http.createServer(async (req, res) => {
     //idk what they'd be getting
   });
 
-  app.get('school/:school_id/student/:student_id', (req, res) => { 
+  app.get('/school/:school_id/student/:student_id', (req, res) => { 
     const result = db.getStudent(req.params.student_id, req.params.school_id);
     //TODO: format result
     res.send(result);
   });
 
-  app.get('/admin/:id', (req, res) => {
+  app.get('/staff/:id', (req, res) => {
     const result = db.getStaff(req.params.id);
     //TODO: format result
     res.send(result);
@@ -78,6 +84,30 @@ const server = http.createServer(async (req, res) => {
     //TODO: format result
     res.send(result);
   });
+
+  app.get('/subject/:id', (req, res) => {
+    const result = db.getSubject(req.params.id);
+    //TODO: format result
+    res.send(result);
+  })
+
+  app.get('/teacher/:id/subject', (req, res) => {
+    const result = db.getTeacherSubjects(req.params.id);
+    //TODO: format result
+    res.send(result);
+  });
+
+  app.get('/grade/:id/subject', (req, res) => {
+    const result = db.getGradeSubjects(req.params.id);
+    //TODO: format result
+    res.send(result);
+  });
+
+  app.get('/school/:id/schedule', (req, res) => {
+    const result = db.getSchedule(req.params.id);
+    //TODO: format result
+    res.send(result);
+  })
 
   app.delete('/school', (req, res) => {
       db.removeSchool(req.domain);
