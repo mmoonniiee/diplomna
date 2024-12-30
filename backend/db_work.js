@@ -31,9 +31,7 @@ const pool = new Pool({
       id int not null serial primary key,
       name varchar(64) not null,
       email varchar(64) not null,
-      constraint staff_school
-        foreign key(staff_school)
-          references School(id)
+      constraint staff_school foreign key(staff_school) references School(id)
     )`);
 
     await pool.query(`
@@ -46,9 +44,7 @@ const pool = new Pool({
       email varchar(64) not null,
       type teacher_type not null,
       chorarium int not null check(chorarium < 40),
-      constraint teacher_school
-        foreign key(teacher_school)
-          references School(id)
+      constraint teacher_school foreign key(teacher_school) references School(id)
     )`);
 
     await pool.query(`
@@ -56,9 +52,7 @@ const pool = new Pool({
       id int not null primary key,
       name varchar(64) not null,
       email varchar(64) not null, 
-      constraint admin_school
-        foreign key(admin_school)
-          references School(id)
+      constraint admin_school foreign key(admin_school) references School(id)
     )`);
     
     await pool.query(`
@@ -66,7 +60,8 @@ const pool = new Pool({
       id int not null serial primary key,
       subgroup varchar(5) not null unique,
       graduation_year int not null check(grad_year < CURRENT_DATE),
-      constraint grade_teacher foreign key(grade_teacher) references Teacher(id)
+      constraint grade_teacher foreign key(grade_teacher) references Teacher(id),
+      constraint school_grade foreign key(school_grade) references School(id)
     )`);
 
     await pool.query(`
@@ -78,14 +73,15 @@ const pool = new Pool({
     )`);
 
     await pool.query(`
-    create type semester as ENUM("first", "second", "both")`);
+    create type term as ENUM("first", "second", "both")`);
 
     await pool.query(`
     create table if not exists Subject(
       id int not null serial primary key,
       name varchar(64) not null,
       chorarium int not null check(chorarium < 40),
-      semester semester notnull
+      term term not null,
+      constraint school_id foreign key(school_id) refferences School(id)
     )`);
 
     //tables subject_grade_teacher 
@@ -104,14 +100,15 @@ const pool = new Pool({
     create type weekday as ENUM("monday", "tuesday", "wednesday", "thursday", "friday")`);
 
     await pool.query(`
-    create table if not exists Chas(
+    create table if not exists Class(
       id int serial primary key,
-      constraint subject_taught foreign key(subject) references Subject(id),
+      constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
       week_taught week_type not null,
       weekday_taught weekday not null,
       start_time time not null,
       end_time time not null,
-      semester semester not null
+      term term not null,
+      constraint school foreign key(school) references School(id)
     )`);
     }
 
@@ -196,7 +193,8 @@ const pool = new Pool({
   }
 
   export async function getTeacher(teacher_id) {
-    const result = await pool.query(`select name, email, chorarium, type from Teacher`)
+    const result = await pool.query(`select name, email, chorarium, type from Teacher where Teacher(id) = $1`, teacher_id);
+    return result;
   }
  
   export async function staffIntoAdmin(staff_id) {
@@ -206,23 +204,27 @@ const pool = new Pool({
     return result;
   }
 
-  export async function isSemesterType(value) {
-    const result = await pool.query(`select exists (select 1 from semester 
-      where typname = 'semester' and $1::status_enum is not null)`, value);
+  export async function isTermType(value) {
+    const result = await pool.query(`select exists (select 1 from term 
+      where typname = 'term' and $1::status_enum is not null)`, value);
       return result.rows[0].exists;
   }
  
   //add & remove subject
-  export async function addSubject(name, chorarium, semester) {
-    const result = await pool.query(`insert into Subject (name, chorarium, semester) values ($1, $2, $3)
-    returning id, name`, name, chorarium, semester);
+  export async function addSubject(name, chorarium, term, school_id) {
+    const result = await pool.query(`insert into Subject (name, chorarium, term, school_id) 
+    values ($1, $2, $3, $4) returning id, name`, name, chorarium, term, school_id);
     return result;
   }
  
   export async function removeSubject(subject_id) {
     await pool.query(`delete from Subject where id = $1`, subject_id);
-    await pool.query(`delete from TeacherSubject where subject_id = $1`, subject_id);
-    await pool.query(`delete from GradeSubject where subject_id = $1`, subject_id);
+    await pool.query(`delete from subjectGradeTeacher where subject_id = $1`, subject_id);
+  }
+
+  export async function getSubject(subject_id) {
+    const result = await pool.query(`select name, chorarium, term from Subject where Subject(id) = $1`, subject_id);
+    return result;
   }
 
   //add subjects to grades and teachers
@@ -234,7 +236,7 @@ const pool = new Pool({
   
   //get teacher's subjects
   export async function getTeacherSubjects(teacher_id) {
-    const result = await pool.query(`select name, chorarium, semester from Subject 
+    const result = await pool.query(`select name, chorarium, term from Subject 
     left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
     where SCT.teacher_id = $1`, teacher_id);
     //TODO: reformat result into an array to return
@@ -243,7 +245,7 @@ const pool = new Pool({
 
   //get grade' subjects
   export async function getGradeSubjects(grade_id) {
-    const result = await pool.query(`select name, chorarium, semester from Subject 
+    const result = await pool.query(`select name, chorarium, term from Subject 
     left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
     where SCT.grade_id = $1`, grade_id);
     //TODO: reformat result into an array to return
@@ -253,4 +255,9 @@ const pool = new Pool({
   //TODO: insert into schedule table
   export async function insertIntoSchedule(){
     //no
+  }
+
+  export async function getSchedule(school_id) {
+    const result = await pool.query(`select * from Class where Class(school_id) = $1`, school_id);
+    return result;
   }
