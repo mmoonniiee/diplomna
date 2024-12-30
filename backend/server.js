@@ -13,20 +13,20 @@ const server = http.createServer(async (req, res) => {
     if(!db.isSchoolType(type)){
       throw new Error("Invalid school type");
     }
-    db.addSchool(name, domain, type);
-    res.sendStatus(201);
+    const result = db.addSchool(name, domain, type);
+    res.send(result);
   });
 
   app.post('/students', (req, res) => {
     const {name, email} = req.body;
-    db.addStudent(name, email);
-    res.sendStatus(201);
+    const result = db.addStudent(name, email);
+    res.send(result);
   });
 
   app.post('/staff', (req, res) => {
-    const {name, email} = req.body.
-    db.addStaff(name, email);
-    res.sendStatus(201);
+    const {name, email} = req.body;
+    const result = db.addStaff(name, email);
+    res.send(result);
   });
 
   app.post('/teacher', (req, res) => {
@@ -34,14 +34,14 @@ const server = http.createServer(async (req, res) => {
     if(!db.isTeacherType(type)) {
       throw new Error("Invalid teacher type");
     }
-    db.staffIntoTeacher(id, type, chorarium);
-    res.sendStatus(201);
+    const result = db.staffIntoTeacher(id, type, chorarium);
+    res.send(result);
   });
 
   app.post('/admin', (req, res) => {
     const email = req.body
-    db.staffIntoAdmin(email);
-    res.sendStatus(201);
+    const result = db.staffIntoAdmin(email);
+    res.send(result);
   });
 
   app.post('/subject', (req, res) => {
@@ -49,8 +49,8 @@ const server = http.createServer(async (req, res) => {
     if(!db.isSemesterType(semester)){
       throw new Error("Invalid semester");
     }
-    db.addSubject(name, chorarium, semester);
-    res.sendStatus(201);
+    const result = db.addSubject(name, chorarium, semester);
+    res.send(result);
   });
 
   app.post('/schedule', (req, res) => {
