@@ -1,8 +1,6 @@
 import http from 'http';
 import express from 'express';
 import * as db from './db_work.js';
-import { resourceLimits } from 'worker_threads';
-import { Pool } from 'pg';
 
 const server = http.createServer(async (req, res) => {
   //TODO: route endpoints 
@@ -89,7 +87,7 @@ const server = http.createServer(async (req, res) => {
     const result = db.getSubject(req.params.id);
     //TODO: format result
     res.send(result);
-  })
+  });
 
   app.get('/teacher/:id/subject', (req, res) => {
     const result = db.getTeacherSubjects(req.params.id);
@@ -107,7 +105,7 @@ const server = http.createServer(async (req, res) => {
     const result = db.getSchedule(req.params.id);
     //TODO: format result
     res.send(result);
-  })
+  });
 
   app.delete('/school', (req, res) => {
       db.removeSchool(req.domain);
