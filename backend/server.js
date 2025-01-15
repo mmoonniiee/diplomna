@@ -1,11 +1,37 @@
 import http from 'http';
 import express from 'express';
+import passport from 'passport';
+import './auth.js'
 import * as db from './db.js';
 
 const server = http.createServer(async (req, res) => {
   //TODO: route endpoints 
   const app = express();
-  app.use(express.json());    
+  app.use(express.json());
+
+  function isLoggedIn(req, res, next) {
+    req.user ? next() : res.sendStatus(401);
+  }
+
+  //TODO: scope?
+  app.get('/auth/google', 
+    passport.authenticate('google',  {scope: ['email', 'profile']})
+  );
+
+  app.get('/google/callback', 
+    passport.authenticate('google', {
+      successRedirect: '/home',
+      failureRedirect: '/failure'
+    })
+  );
+
+  app.get('/failure', (req, res) => {
+    res.send(`something went wrong`);
+  }); 
+
+  app.get('/home', (req, res) => {
+    
+  })
 
   app.post('/school', (req, res) => {
     const {name, domain, type} = req.body;
