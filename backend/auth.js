@@ -12,16 +12,18 @@ passport.use(new GoogleStrategy({
     findAndCreate(profile.id, profile.displayName, profile.emails[0].value, function (err, user) {
       return cb(err, user);
     });
-    //todo
   }
 ));
 
 passport.serializeUser(function (user, done) {
-    done(null, user);
-    //todo
+    done(null, user.id);
 });
 
 passport.deserializeUser(function (user, done) {
+  try {
+    const user = await getUser(id); 
     done(null, user);
-    //todo
+  } catch (err) {
+    done(err, null);
+  }
 });

@@ -293,6 +293,11 @@ const pool = new Pool({
     }
   }
 
+  export async function getUser(id) {
+    const result = await pool.query(`select * from User where google_id = $1`, id);
+    return result;
+  }
+
   export async function isTermType(value) {
     const result = await pool.query(`select exists (select 1 from term 
       where typname = 'term' and $1::status_enum is not null)`, value);
