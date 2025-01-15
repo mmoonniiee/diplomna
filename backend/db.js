@@ -15,6 +15,19 @@ const pool = new Pool({
   //create all the tables
   export async function createTables() {
     await pool.query(`
+    create type user_type as ENUM("site_admin", "student", "teacher", "school_admin");
+    `);
+
+    await pool.query(`
+    create table if not exists User (
+      id int not null serial primary key,
+      google_id varchar(128) not null,
+      name varchar(64) not null,
+      email varchar(64) not null unique,
+      role user_role not null
+    )`);
+    
+    await pool.query(`
     create type school_type as ENUM("primary", "secondary", "high", "college");
     `);
 
@@ -28,7 +41,7 @@ const pool = new Pool({
 
     await pool.query(`
     create table if not exists Staff (
-      id int not null serial primary key,
+      id int not null primary key,
       name varchar(64) not null,
       email varchar(64) not null,
       constraint staff_school foreign key(staff_school) references School(id)
@@ -66,10 +79,20 @@ const pool = new Pool({
 
     await pool.query(`
     create table if not exists Student(
-      id int not null serial primary key,
+      id int not null primary key,
       name varchar(64) not null,
       email varchar(32) not null check(email like "%@%"),
       constraint school_id foreign key(school_id) refferences School(id)
+    )`);
+
+    await pool.query(`
+    create table if not exists Awaiting (
+      email varchar(64) not null unique,
+      role user_role not null check (role > 0),
+      chorarium int,
+      teacher_type teacher_type,
+      constraint school_id foreign key(school_id) references School(id),
+      constraint grade_id foreign key(grade_id) references Grade(id)
     )`);
 
     await pool.query(`
@@ -112,6 +135,7 @@ const pool = new Pool({
     )`);
     }
 
+  //TODO: get school types??
   //add & remove school 
   export async function isSchoolType(value) {
     const result = await pool.query(`select exists (select 1 from school_type 
@@ -123,18 +147,46 @@ const pool = new Pool({
   export async function addSchool(name, domain, type) {
     const result = await pool.query(`insert into School(name, domain, type) values($1, $2, $3)
     returning id, name`, name, domain, type);
-    return result;  
+    return result;
   }
 
   export async function removeSchool(school_id) {
     await pool.query("delete from School where id = $1", school_id);
   }
 
+  const getSchoolId = async (domain) => {
+    try {
+      result = await pool.query(`select id from School where domain = $1`, domain);
+      if (result.rows.lenght > 0) {
+        return result.row[0].domain;
+      }
+      else {
+        throw new Error("School domain not found");
+      } 
+    }
+    catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   //add & remove student
-  export async function addStudent(name, email, school_id){
-    const result = await pool.query(`insert into Student(name, email, student_school) values($1, $2, $3)
-    returning id, name`, name, email, school_id);
-    return result;
+  async function addStudent(email){
+    const result = await pool.query(`select id, name from User where email = $1`, email);
+    if(!result.rows.length > 0) {
+      throw new Error(`there's no user like that`);
+    }
+    const match = email.match(/@(.*)/); 
+    const domain = match[0];
+    try {
+      school_id = getSchoolId(domain);
+    }
+    catch (error) {
+      console.error(error);
+    }
+    const id = await pool.query(`insert into Student(id, name, email, student_school) 
+    values($1, $2, $3) returning id, name`, result.rows.id, result.rows.name, email, school_id);
+    return id;
   }
 
   export async function removeStudent(student_id) {
@@ -160,10 +212,22 @@ const pool = new Pool({
   }
 
   //add & remove staff
-  export async function addStaff(name, email, school_id){
-    const result = await pool.query(`insert into Staff(name, email, student_school) values($1, $2, $3)
-    returnig id, name`, name, email, school_id);
-    return result;
+  export async function addStaff(email){
+    const result = await pool.query(`select id, name from User where email = $1`, email);
+    if(!result.rows.length > 0) {
+      throw new Error(`there's no user like that`);
+    }
+    const match = email.match(/@(.*)/); 
+    const domain = match[0];
+    try {
+      school_id = getSchoolId(domain);
+    }
+    catch (error) {
+      console.error(error);
+    }
+    const id = await pool.query(`insert into Staff(id, name, email, staff_school) 
+    values($1, $2, $3, $4) returning id, name`, result.rows.id, result.rows.name, email, school_id);
+    return id;
   }
 
   export async function removeStaff(staff_id) {
@@ -185,7 +249,7 @@ const pool = new Pool({
   }
 
   //split staff into teachers and admins
-  export async function staffIntoTeacher(staff_id, type, chorarium) {
+  async function staffIntoTeacher(staff_id, type, chorarium) {
     const result = await pool.query(`insert into Teacher (id, name, email, type, chorarium, school_id)
     select id, name, email, $1, $2, staff_school from Staff
     where Staff(id) = $1 returning id, name`, type, chorarium, staff_id);
@@ -197,11 +261,36 @@ const pool = new Pool({
     return result;
   }
  
-  export async function staffIntoAdmin(staff_id) {
+  async function staffIntoAdmin(staff_id) {
     const result = await pool.query(`insert into Admin (id, name, email, school_id)
     select id, name, email, staff_school from Staff
     where Staff(id) = $1 returning id, name`, staff_id);
     return result;
+  }
+
+  export async function findAndCreate(google_id, name, email) {
+    const result = await pool.query(`select * from Awaiting where email = $1`, email);
+    if(result.rows.length > 0) {
+      if(result.rows.role == 1) {
+        await pool.query(`insert into User (google_id, name, email, role) values($1, $2, $3, $4)`, google_id, name, email, 1);
+        addStudent(email);
+      }
+      if(result.rows.role == 2) {
+        await pool.query(`insert into User (google_id, name, email, role) values($1, $2, $3, $4)`, google_id, name, email, 2);
+        addStaff(email);
+        if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
+          throw new Error(`not enough data to create teacher`);
+        }
+        const id = await pool.query(`select id from Staff where email = $1`, email);
+        staffIntoTeacher(id.rows.id, result.rows.chorarium, result.rows.teacher_type);
+      }
+      if(result.rows.role == 3) {
+        await pool.query(`insert into User (google_id, name, email, role) values($1, $2, $3, $4)`, google_id, name, email, 3);
+        addStaff(email);
+        const id = await pool.query(`select id from Staff where email = $1`, email);
+        staffIntoAdmin(id.rows.id);
+      }
+    }
   }
 
   export async function isTermType(value) {
