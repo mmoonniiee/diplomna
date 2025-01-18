@@ -13,6 +13,11 @@ const server = http.createServer(async (req, res) => {
     req.user ? next() : res.sendStatus(401);
   }
 
+  function isAdmin(req, res, next) {
+    req.user ? next() : res.sendStatus(401);
+    //TODO: what's actually suposed to be done
+  }
+
   //TODO: scope?
   app.get('/auth/google', 
     passport.authenticate('google',  {scope: ['email', 'profile']})
@@ -30,7 +35,7 @@ const server = http.createServer(async (req, res) => {
   }); 
 
   app.get('/home', (req, res) => {
-    
+    res.sendStatus(200); //todo?
   })
 
   app.post('/school', (req, res) => {
@@ -78,18 +83,45 @@ const server = http.createServer(async (req, res) => {
     res.send(result);
   });
 
+  //wtf is this
   app.post('/subject/:subject_id/teacher/:teacher_id/grade/:grade_id', (req, res) => {
     const result = db.subjectTeacherGrade(req.params.subject_id, req.params.grade_id, req.params.teacher_id);
     res.send(result);
   });
 
-  app.post('/schedule', (req, res) => {
-    //ne     
+  app.get('/subject/grade/:id', (req, res) => {
+    const result = db.getGradeSubjects(req.params.id);
+    res.json(result);
+  })
+
+  app.get('/subject/teacher/:id', (req, res) => {
+    const result = db.getTeacherSubjects(req.params.id);
+    res.json(result);
+  })
+
+  app.get('/schedule/teacher/:id', (req, res) => {
+    const result = db.getTeacherSchedule(req.params.id);
+    res.json(result);
   });
 
-  app.get('/school/:id', (req, res) => {
-    //idk what they'd be getting
+  app.get('/schedule/grade/:id', (req, res) => {
+    const result = db.getGradeSchedule(req.params.id);
+    res.json(result);
   });
+
+  app.get('/school/:id/teachers', (req, res) => {
+    const result = db.getAllTeachers(req.params.id);
+    res.json(result);
+  });
+
+  app.get('/school/:id/grades', (req, res) => {
+    const result = db.getAllGrades(req.params.id);
+    res.json(result);
+  });
+
+  app.post('/schedule/grade', (req, res) => {
+    //todo
+  })
 
   app.get('/school/:school_id/student/:student_id', (req, res) => { 
     const result = db.getStudent(req.params.student_id, req.params.school_id);

@@ -69,10 +69,15 @@ const pool = new Pool({
     )`);
     
     await pool.query(`
+    create type shift as ENUM("first", "second")`);
+
+    await pool.query(`
     create table if not exists Grade(
       id int not null serial primary key,
       subgroup varchar(5) not null unique,
       graduation_year int not null check(grad_year < CURRENT_DATE),
+      1st_term shift not null,
+      2nd_term shift not null,
       constraint grade_teacher foreign key(grade_teacher) references Teacher(id),
       constraint school_grade foreign key(school_grade) references School(id)
     )`);
@@ -96,7 +101,7 @@ const pool = new Pool({
     )`);
 
     await pool.query(`
-    create type term as ENUM("first", "second", "both")`);
+    create type term as ENUM("both", "first", "second")`);
 
     await pool.query(`
     create table if not exists Subject(
@@ -124,7 +129,7 @@ const pool = new Pool({
 
     await pool.query(`
     create table if not exists Class(
-      id int serial primary key,
+      id int serial primary key not null,
       constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
       week_taught week_type not null,
       weekday_taught weekday not null,
@@ -206,6 +211,16 @@ const pool = new Pool({
     return result;
   }
 
+  export async function getGrade(grade_id) {
+    const result = await pool.query(`select * from Grade where id = $1`, grade_id);
+    return result;
+  }
+
+  export async function getAllGrades(school_id) {
+    const result = await pool.query(`select * from Grade where school_id = $1`, school_id);
+    return result; 
+  }
+
   //format grades
   export async function studentIntoGrade(student_id, grade_id) {
     await pool.query(`update Student set school_id = $1 where id = $2`, grade_id, student_id);
@@ -258,6 +273,11 @@ const pool = new Pool({
 
   export async function getTeacher(teacher_id) {
     const result = await pool.query(`select name, email, chorarium, type from Teacher where Teacher(id) = $1`, teacher_id);
+    return result;
+  }
+
+  export async function getAllTeachers(school_id) {
+    const result = await pool.query(`select * from Teacher where school_id = $1`, school_id);
     return result;
   }
  
@@ -331,27 +351,35 @@ const pool = new Pool({
   //get teacher's subjects
   export async function getTeacherSubjects(teacher_id) {
     const result = await pool.query(`select name, chorarium, term from Subject 
-    left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
-    where SCT.teacher_id = $1`, teacher_id);
+    left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id 
+    where SGT.teacher_id = $1`, teacher_id);
     //TODO: reformat result into an array to return
     return result;
   }
 
   //get grade' subjects
   export async function getGradeSubjects(grade_id) {
-    const result = await pool.query(`select name, chorarium, term from Subject 
-    left join SubjectGradeTeacher as SCT on SCT.subject_id = Subject.id 
-    where SCT.grade_id = $1`, grade_id);
+    const result = await pool.query(`select id, name, chorarium, term from Subject 
+    left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id 
+    where SGT.grade_id = $1`, grade_id);
     //TODO: reformat result into an array to return
     return result;
   }
 
   //TODO: insert into schedule table
-  export async function insertIntoSchedule(){
-    //no
+  export async function insertIntoSchedule(sgt_id, week_taught, weekday_taught, start_time, end_time, term, school_id){
+    await pool.query(`insert into Class values(subject_taught, week_taught, weekday_taught, start_time, end_time, term, school_id)
+    values ($1, $2, $3, $4, $5, $6, $7)`, sgt_id, week_taught, weekday_taught, start_time, end_time, term, school_id);
   }
 
-  export async function getSchedule(school_id) {
-    const result = await pool.query(`select * from Class where Class(school_id) = $1`, school_id);
+  export async function getGradeSchedule(grade_id) {
+    const result = await pool.query(`select * from Class join SubjectGradeTeacher as SGT 
+    on Class.subject_taught = SGT.id where SGT.grade_id = $1`, grade_id);
+    return result;
+  }
+
+  export async function getTeacherSchedule(teacher_id) {
+    const result = await pool.query(`select * from Class join SubjectGradeTeacher as SGT 
+    on Class.subject_taught = SGT.id where SGT.teacher_id = $1`, teacher_id);
     return result;
   }
