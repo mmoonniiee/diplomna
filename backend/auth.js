@@ -1,5 +1,5 @@
 import passport from 'passport';
-import { findAndCreate } from './db';
+import { findOrCreate } from './db';
 
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
@@ -9,7 +9,7 @@ passport.use(new GoogleStrategy({
     callbackURL: "http://localhost:5000/google/callback"
   },
   function(accessToken, refreshToken, profile, cb) {
-    findAndCreate(profile.id, profile.displayName, profile.emails[0].value, function (err, user) {
+    findOrCreate(profile.id, profile.displayName, profile.emails[0].value, function (err, user) {
       return cb(err, user);
     });
   }

@@ -15,7 +15,7 @@ const pool = new Pool({
   //create all the tables
   export async function createTables() {
     await pool.query(`
-    create type user_type as ENUM("site_admin", "student", "teacher", "school_admin");
+    create type user_type as ENUM("site_admin", "student", "teacher", "school_admin", "teacher_admin");
     `);
 
     await pool.query(`
@@ -288,27 +288,49 @@ const pool = new Pool({
     return result;
   }
 
-  export async function findAndCreate(google_id, name, email) {
+  export async function findOrCreate(google_id, name, email) {
+    const user = await pool.query(`select * from User where google_id = $1`, google_id);
+    if(user.rows.lenght > 0) {
+      return user;
+    }
     const result = await pool.query(`select * from Awaiting where email = $1`, email);
     if(result.rows.length > 0) {
-      if(result.rows.role == 1) {
-        await pool.query(`insert into User (google_id, name, email, role) values($1, $2, $3, $4)`, google_id, name, email, 1);
+      if(result.rows.role == 1) { //maybe change this to ==="student" and so on
+        const newStudent = await pool.query(`insert into User (google_id, name, email, role) 
+        values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 1);
         addStudent(email);
+        return newStudent;
       }
       if(result.rows.role == 2) {
-        await pool.query(`insert into User (google_id, name, email, role) values($1, $2, $3, $4)`, google_id, name, email, 2);
+        const newTeacher = await pool.query(`insert into User (google_id, name, email, role) 
+        values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 2);
         addStaff(email);
         if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
           throw new Error(`not enough data to create teacher`);
         }
         const id = await pool.query(`select id from Staff where email = $1`, email);
         staffIntoTeacher(id.rows.id, result.rows.chorarium, result.rows.teacher_type);
+        return newTeacher;
       }
       if(result.rows.role == 3) {
-        await pool.query(`insert into User (google_id, name, email, role) values($1, $2, $3, $4)`, google_id, name, email, 3);
+        const newAdmin = await pool.query(`insert into User (google_id, name, email, role) 
+        values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 3);
         addStaff(email);
         const id = await pool.query(`select id from Staff where email = $1`, email);
         staffIntoAdmin(id.rows.id);
+        return newAdmin;
+      }
+      if(result.rows.role == 4) {
+        const newStaff = await pool.query(`insert into User (google_id, name, email, role) 
+        values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 2);
+        addStaff(email);
+        if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
+          throw new Error(`not enough data to create teacher`);
+        }
+        const id = await pool.query(`select id from Staff where email = $1`, email);
+        staffIntoTeacher(id.rows.id, result.rows.chorarium, result.rows.teacher_type);
+        staffIntoAdmin(id.rows.id);
+        return newStaff;
       }
     }
   }
