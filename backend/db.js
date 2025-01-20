@@ -294,7 +294,7 @@ const pool = new Pool({
       return user;
     }
     const result = await pool.query(`select * from Awaiting where email = $1`, email);
-    if(result.rows.length > 0) {
+    if(result.rows.lenght > 0) {
       if(result.rows.role == 1) { //maybe change this to ==="student" and so on
         const newStudent = await pool.query(`insert into User (google_id, name, email, role) 
         values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 1);
