@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
+import Table from './scheduleTable.jsx'
 
 export default function Schedule(props) {
     const [grades, setGrades] = useState(null);
@@ -87,18 +88,22 @@ export default function Schedule(props) {
                     </TabPanels>
                     </TabGroup> 
                     </div>
-                    <div className="schedule"></div>
+                    <div className="schedule">
+                        <Table /> {/*i ima i oshte*/}
+                    </div>
                     <div className="subjects">
                         <ul>
                             {gradeSubjects.map((subject) => (
-                                <li
-                                key={subject.id}
-                                className="subject"
-                                draggable>
-                                    <p>{subject.name}</p>
-                                    <p>{subject.teachername}</p>
-                                    <a>{subject.chorarium}</a>
-                                </li>
+                                <div>
+                                    <li
+                                    key={subject.id}
+                                    className="subject"
+                                    draggable>
+                                        <p>{subject.name}</p>
+                                        <p>{subject.teachername}</p>
+                                        <a>{subject.chorarium}</a>
+                                    </li>
+                                </div>
                             ))}
                             {teacherSubjects.map((subject) => (
                                 <li
