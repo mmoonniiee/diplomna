@@ -178,7 +178,7 @@ const pool = new Pool({
   //add & remove student
   async function addStudent(email){
     const result = await pool.query(`select id, name from User where email = $1`, email);
-    if(!result.rows.length > 0) {
+    if(!result.rows.lenght > 0) {
       throw new Error(`there's no user like that`);
     }
     const match = email.match(/@(.*)/); 
@@ -229,7 +229,7 @@ const pool = new Pool({
   //add & remove staff
   export async function addStaff(email){
     const result = await pool.query(`select id, name from User where email = $1`, email);
-    if(!result.rows.length > 0) {
+    if(!result.rows.lenght > 0) {
       throw new Error(`there's no user like that`);
     }
     const match = email.match(/@(.*)/); 
