@@ -162,7 +162,7 @@ const pool = new Pool({
   const getSchoolId = async (domain) => {
     try {
       result = await pool.query(`select id from School where domain = $1`, domain);
-      if (result.rows.lenght > 0) {
+      if (result.rows.length > 0) {
         return result.row[0].domain;
       }
       else {
@@ -178,7 +178,7 @@ const pool = new Pool({
   //add & remove student
   async function addStudent(email){
     const result = await pool.query(`select id, name from User where email = $1`, email);
-    if(!result.rows.lenght > 0) {
+    if(!result.rows.length > 0) {
       throw new Error(`there's no user like that`);
     }
     const match = email.match(/@(.*)/); 
@@ -226,10 +226,14 @@ const pool = new Pool({
     await pool.query(`update Student set school_id = $1 where id = $2`, grade_id, student_id);
   }
 
+  export async function addAwaiting() {
+
+  }
+
   //add & remove staff
   export async function addStaff(email){
     const result = await pool.query(`select id, name from User where email = $1`, email);
-    if(!result.rows.lenght > 0) {
+    if(!result.rows.length > 0) {
       throw new Error(`there's no user like that`);
     }
     const match = email.match(/@(.*)/); 
@@ -290,11 +294,11 @@ const pool = new Pool({
 
   export async function findOrCreate(google_id, name, email) {
     const user = await pool.query(`select * from User where google_id = $1`, google_id);
-    if(user.rows.lenght > 0) {
+    if(user.rows.length > 0) {
       return user;
     }
     const result = await pool.query(`select * from Awaiting where email = $1`, email);
-    if(result.rows.lenght > 0) {
+    if(result.rows.length > 0) {
       if(result.rows.role == 1) { //maybe change this to ==="student" and so on
         const newStudent = await pool.query(`insert into User (google_id, name, email, role) 
         values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 1);
