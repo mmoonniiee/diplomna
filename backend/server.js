@@ -57,19 +57,19 @@ app.post('/school', async (req, res) => {
 app.post('/school/:id/awaiting', async (req, res) => {
   const {email, role, chorarium, teacher_type, school_id, grade_id} = req.body;
   const result = db.addAwaiting(email, role, chorarium, teacher_type, school_id, grade_id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.post('/school/:id/students', async (req, res) => {
   const {name, email} = req.body;
   const result = db.addStudent(name, email);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.post('/school/:id/staff', async (req, res) => {
   const {name, email} = req.body;
   const result = db.addStaff(name, email);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.post('/school/:id/teacher', async (req, res) => {
@@ -78,13 +78,13 @@ app.post('/school/:id/teacher', async (req, res) => {
     throw new Error("Invalid teacher type");
   }
   const result = db.staffIntoTeacher(id, type, chorarium);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.post('/school/:id/admin', async (req, res) => {
   const email = req.body
   const result = db.staffIntoAdmin(email);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.post('/school/:id/subject', async (req, res) => {
@@ -93,12 +93,12 @@ app.post('/school/:id/subject', async (req, res) => {
     throw new Error("Invalid semester");
   }
   const result = db.addSubject(name, chorarium, semester, req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.post('/subject/:subject_id/teacher/:teacher_id/grade/:grade_id', async (req, res) => {
   const result = db.subjectTeacherGrade(req.params.subject_id, req.params.grade_id, req.params.teacher_id);
-  res.send(result.json());
+  res.json(resullt);
 });
 
 app.get('/subject/grade/:id', async (req, res) => {
@@ -137,37 +137,37 @@ app.post('/schedule/grade', async (req, res) => {
 
 app.get('/school/:school_id/student/:student_id', async (req, res) => { 
   const result = db.getStudent(req.params.student_id, req.params.school_id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.get('/staff/:id', async (req, res) => {
   const result = db.getStaff(req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.get('/teacher/:id', async (req, res) => {
   const result = db.getTeacher(req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.get('/subject/:id', async (req, res) => {
   const result = db.getSubject(req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.get('/teacher/:id/subject', async (req, res) => {
   const result = db.getTeacherSubjects(req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.get('/grade/:id/subject', async (req, res) => {
   const result = db.getGradeSubjects(req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.get('/school/:id/schedule', async (req, res) => {
   const result = db.getSchedule(req.params.id);
-  res.send(result.json());
+  res.json(result);
 });
 
 app.delete('/school', async (req, res) => {
