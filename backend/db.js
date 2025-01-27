@@ -226,8 +226,19 @@ const pool = new Pool({
     await pool.query(`update Student set school_id = $1 where id = $2`, grade_id, student_id);
   }
 
-  export async function addAwaiting() {
-
+  export async function addAwaiting(email, role, chorarium, teacher_type, school_id, grade_id) {
+    const result = await pool.query(`insert into Awaiting(email, role, school_id) 
+    values($1, $2, $3) returning id`, email, role, school_id);
+    if(chorarium) {
+      await pool.query(`update Awaiting set chorarium = $1 where id = $2`, chorarium, result.rows.id);
+    }
+    if(teacher_type) {
+      await pool.query(`update Awaiting set teacher_type = $1 where id = $2`, teacher_type, result.rows.id);
+    }
+    if(grade_id) {
+      await pool.query(`update Awaiting set grade_id = $1 where id = $2`, grade_id, result.rows.id);
+    }
+    return result.rows.id;
   }
 
   //add & remove staff

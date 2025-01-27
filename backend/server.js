@@ -48,6 +48,12 @@ const server = http.createServer(async (req, res) => {
     res.send(result.json());
   });
 
+  app.post('/school/:id/awaiting', (req, res) => {
+    const {email, role, chorarium, teacher_type, school_id, grade_id} = req.body;
+    const result = db.addAwaiting(email, role, chorarium, teacher_type, school_id, grade_id);
+    res.send(result.json());
+  });
+
   app.post('/school/:id/students', (req, res) => {
     const {name, email} = req.body;
     const result = db.addStudent(name, email);
