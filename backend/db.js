@@ -2,11 +2,11 @@ import pkg from 'pg';
 const {Pool} = pkg;
 
 const pool = new Pool({
-    host: DB_HOST,
-    user: DB_USER,
-    database: DB_DATABASE,
-    password: DB_PASSWORD,
-    port: DB_PORT,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    database: process.env.DB_DATABASE,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
   });
 
   //connect
@@ -140,7 +140,12 @@ const pool = new Pool({
     )`);
     }
 
-  //TODO: get school types??
+  
+  export async function getSchoolTypes() {
+    const result = await pool.query(`select enum_range(NULL::school_type)`);
+    return result;
+  }
+
   //add & remove school 
   export async function isSchoolType(value) {
     const result = await pool.query(`select exists (select 1 from school_type 
