@@ -3,6 +3,70 @@ import axios from 'axios';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import Table from './scheduleTable.jsx'
 
+function BoxesRender({id, onDrop}) {
+    const [boxes, setBoxes] = useState();
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDrop = (event, cellId) => {
+        event.preventDefault();
+        const classData = event.dataTransfer.getData('text/plain');
+        
+        if(boxes.length === 1) {
+            const cell = event.currentTarget.getBoundingClientRect();
+            const cellX = event.clientX - cell.left;
+            const thirdWidth = box.width / 3;
+
+            if(cellX < thirdWidth) {
+                setBoxes([
+                    {id: `odd-${id}`, 
+                    stgId: `id`,
+                    content: {
+                        subject: `name`,
+                        teachername: `teacher`
+                    }},
+                    {id: `even-${id}`}
+                ]);
+            } else if(cellx > thirdWidth*2) {
+                setBoxes([
+                    {id: `odd-${id}`},
+                    {id: `even-${id}`, 
+                    stgId: `id`,
+                    content: {
+                        subject: `name`,
+                        teachername: `teacher`
+                    }}
+                ]);
+            } else {
+                setBoxes([
+                    {id: id, 
+                    stgId: `id`,
+                    content: {
+                        subject: `name`,
+                        teachername: `teacher`
+                    }}
+                ])
+            }
+        } else {
+            setBoxes(boxes.map(box => 
+                cell.id === cellId ? {...cell, content: classData} : cell));
+        }
+        onDrop();
+    }
+
+    const handleDragOver = (event) => {
+        event.preventDefault();
+        setIsDragging(true);
+    } 
+
+    const handleDragLeave = () => {
+        setIsDragging(false);
+    }
+
+    return (
+        <div></div>
+    )
+}
+
 export default function Schedule(props) {
     const [grades, setGrades] = useState(null);
     const [gradeChosenId, setChosenGrade] = useState(0);
@@ -11,6 +75,19 @@ export default function Schedule(props) {
     const [teacherChosenId, setChosenTeacher] = useState(0);
     const [teacherSubjects, setTeacherSubjects] = useState(null);
 
+    //const term = props.term
+
+    const getDay = (index) => {
+        const days = [`mon`, `tue`, `wed`, `thu`, `fri`];
+        return days[index];
+    }
+
+    const classes = Array.from({ length: 8 }, (_, rowIndex) =>
+    Array.from({ length: 5 }, (_, colIndex) => ({
+      id: `${getDay(colIndex)}-${rowIndex}`,
+      value: ``
+      }))
+    );
 
     useEffect(() => {
         axios.get('http://localhost:5000/school/${props.school_id}/grades')
