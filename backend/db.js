@@ -133,6 +133,7 @@ const pool = new Pool({
       constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
       week_taught week_type not null,
       weekday_taught weekday not null,
+      class_number int not null,
       start_time time not null,
       end_time time not null,
       term term not null,
@@ -395,7 +396,6 @@ const pool = new Pool({
     const result = await pool.query(`select name, chorarium, term from Subject 
     left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id 
     where SGT.teacher_id = $1`, teacher_id);
-    //TODO: reformat result into an array to return
     return result;
   }
 
@@ -404,14 +404,13 @@ const pool = new Pool({
     const result = await pool.query(`select id, name, chorarium, term from Subject 
     left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id 
     where SGT.grade_id = $1`, grade_id);
-    //TODO: reformat result into an array to return
     return result;
   }
 
   //TODO: insert into schedule table
-  export async function insertIntoSchedule(sgt_id, week_taught, weekday_taught, start_time, end_time, term, school_id){
+  export async function insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id){
     await pool.query(`insert into Class values(subject_taught, week_taught, weekday_taught, start_time, end_time, term, school_id)
-    values ($1, $2, $3, $4, $5, $6, $7)`, sgt_id, week_taught, weekday_taught, start_time, end_time, term, school_id);
+    values ($1, $2, $3, $4, $5, $6, $7, $8)`, sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id);
   }
 
   export async function getGradeSchedule(grade_id) {
