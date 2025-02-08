@@ -27,7 +27,6 @@ app.get('/google/callback',
     res.cookie('authToken', token, {
       httpOnly: true,
       maxAge: 3600000
-      //todo: add more?
     });
   }
 );
@@ -131,10 +130,6 @@ app.get('/school/:id/grades', async (req, res) => {
   res.json(result.json());
 });
 
-app.post('/schedule/grade', async (req, res) => {
-  //todo
-})
-
 app.get('/school/:school_id/student/:student_id', async (req, res) => { 
   const result = db.getStudent(req.params.student_id, req.params.school_id);
   res.json(result);
@@ -165,13 +160,40 @@ app.get('/grade/:id/subject', async (req, res) => {
   res.json(result);
 });
 
-app.get('/school/:id/schedule', async (req, res) => {
-  const result = db.getSchedule(req.params.id);
+app.get('/grade/:id/schedule', async (req, res) => {
+  const result = db.getGradeSchedule(req.params.id);
   res.json(result);
 });
 
-app.delete('/school', async (req, res) => {
-    db.removeSchool(req.domain);
+app.get('/teacher/:id/schedule', async (req, res) => {
+  const result = db.getTeacherSchedule(req.params.id);
+  res.json(result);
+});
+
+app.post('/grade/:id/schedule', async (req, res) => {
+  const {sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id} = req.body;
+  const result = db.insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id);
+  res.json(result);
+})
+
+app.delete('/school/:id', async (req, res) => {
+  db.removeSchool(req.params.id);
+  res.send(200);
+});
+
+app.delete('/staff/:id', async (req, res) => {
+  db.removeStaff(req.params.id);
+  res.send(200);
+});
+
+app.delete('/student/:id', async (req, res) => {
+  db.removeStudent(req.params.id).
+  res.send(200);
+});
+
+app.delete('/subject/:id', async (req, res) => {
+  db.removeSubject(req.params.id);
+  res.send(200);
 });
 
 const PORT = 5000;

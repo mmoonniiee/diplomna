@@ -406,7 +406,7 @@ const pool = new Pool({
     return result;
   }
 
-  //TODO: insert into schedule table
+  //insert into schedule table
   export async function insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id){
     await pool.query(`insert into Class values(subject_taught, week_taught, weekday_taught, start_time, end_time, term, school_id)
     values ($1, $2, $3, $4, $5, $6, $7, $8)`, sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id);
