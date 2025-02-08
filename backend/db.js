@@ -6,7 +6,7 @@ const pool = new Pool({
     user: process.env.DB_USER,
     database: process.env.DB_DATABASE,
     password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+    port: process.env.DB_PORT
   });
 
   //connect
@@ -141,7 +141,6 @@ const pool = new Pool({
     )`);
     }
 
-  
   export async function getSchoolTypes() {
     const result = await pool.query(`select enum_range(NULL::school_type)`);
     return result;
