@@ -1,11 +1,13 @@
 import React from 'react';
+import Menu from './HamburgerMenu'
+import Account from './Account';
 
 export default function Header() {
     return (
         <header>
-            {/*trqbva mi menu*/}
+            <Menu />
             <h2>EDUTRACK</h2>
-            {/*user icon*/}
+            <Account />
         </header>
     )
 }
