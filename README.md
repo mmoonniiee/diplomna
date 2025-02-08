@@ -1,1 +1,5 @@
-#diplomna
+user guide?
+Git clone и си го изтеглете ддз
+
+~за google автентикацията~
+От Google профила, с който ще управлявате сървъра (?), отворете Google Cloud страницата и навигирайте към APIs & Services. Създайте нов проект, кръщавайки го както искате (или с името на проекта ако измисля) и отидете на страницата Credentials. От Create Credentials изберете OAuth Client ID. В полето Application Type изберете Web application и задайте име. На Authorized redirect URIs задайте http://localhost:5000/google/callback, понеже приложението си няма домейн. Когато процесът е завършен, Google ще ви даде две променливи - GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET. Създадете .env файл в /code/backend, и там дефинирайте двете променливи, като им зададете стойностите, предоставени ви от конзолата на Google. Това ще направи възможно влизането и регистрацията чрез Google.  
