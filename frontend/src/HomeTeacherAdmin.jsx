@@ -1,19 +1,30 @@
 import React from "react";
 import Header from "./components/Header";
+import StaffEdit from './components/StaffEdit';
+import SubjectEdit from './components/StaffEdit';
+import ScheduleEdit from './components/ScheduleEdit';
+import ScheduleButton from './components/ScheduleButton'
+import { Route, Router, Routes } from 'react-router-dom';
+import Schedule from "./schedule";
+
 
 export default function HomeAT() {
     return (
-        <div>
-            <Header />
+        <Router>
             <div>
-                <h1>Редактиране на учители/ученици</h1>
+                <Header />
+                <StaffEdit />
+                <SubjectEdit />
+                <ScheduleEdit />
+                <ScheduleButton />
+
+                <Routes> 
+                    <Route path="/staff/edit" element={<></>} />
+                    <Route path="/subject/edit" element={<></>} />
+                    <Route path="/schedule/edit" element={<Schedule />} />
+                    <Route path="schedule" element={<></>} />
+                </Routes>
             </div>
-            <div>
-                <h1>Редактиране на седмично разписание</h1>
-            </div>
-            <div>
-                <h1>Преглед на личното Ви седмично разписание</h1>
-            </div>
-        </div>
+        </Router>
     )
 }

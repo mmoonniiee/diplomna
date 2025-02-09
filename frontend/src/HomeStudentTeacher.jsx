@@ -1,14 +1,20 @@
 import React from 'react';
 import Header from './components/Header';
+import ScheduleButton from './components/ScheduleButton';
+import { Route, Router, Routes } from 'react-router-dom';
+import SchedulePage from './SchedulePage.jsx'
 
 export default function HomeST() {
     return (
-        <div>
-            <Header />
+        <Router>
             <div>
-                <h1>Програма</h1>
-                <p>Проверете личното ви седмично разписание</p>
+                <Header />
+                <a href="/schedule"><ScheduleButton /></a>
+
+                <Routes>
+                    <Route path="/schedule" element={SchedulePage} />
+                </Routes>
             </div>
-        </div>
+        </Router>
     )
 }
