@@ -10,7 +10,16 @@ import * as db from './db.js';
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors());
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+
+const authenticate = (req, res, next) => {
+  const token = req.cookies.authToken;
+  if (token === process.env.SECRET_KEY) {
+    next(); 
+  } else {
+    res.redirect('http://localhost:5173/'); 
+  }
+}
 
 //TODO: scope?
 app.get('/auth/google', 
@@ -19,25 +28,37 @@ app.get('/auth/google',
 
 app.get('/google/callback', 
   passport.authenticate('google', {
-    successRedirect: '/home',
     failureRedirect: '/failure'
   }), (req, res) => {
     const userPayload = { id: req.user.id, name: req.user.name, role: req.user.role};
-    const token = jwt.sign(userPayload, 'secretkey', {expiresIn: '1h'});
+    const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '3h'});
     res.cookie('authToken', token, {
       httpOnly: true,
-      maxAge: 3600000
+      maxAge: 10800000
     });
+    res.redirect('/home');
   }
 );
 
 app.get('/failure', (req, res) => {
-  res.send(`something went wrong`);
+  res.redirect('http://localhost:5173/'); 
 }); 
 
-app.get('/home', (req, res) => {
-  res.sendStatus(200); //todo.
-})
+app.get('/home', (req, res) => { 
+  const userRole = req.user.role;
+
+  if(userRole === `teacher_admin`) {
+    res.redirect('http://localhost:5173/home/teacheradmin');
+  } else if(userRole === `school_admin`) {
+    res.redirect('http://localhost:5173/home/admin');
+  } else if(userRole === `teacher`) {
+    res.redirect('http://localhost:5173/home/teacher');
+  } else if(userRole === `student`) {
+    res.redirect('http://localhost:5173/home/student');
+  } else {
+    res.redirect('http://localhost:5173/');
+  }
+});
 
 app.get('/school/types', async (req, res) => {
   const result = await db.getSchoolTypes();
