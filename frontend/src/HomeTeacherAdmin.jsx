@@ -1,9 +1,10 @@
 import React from "react";
-import Header from './Header.jsx';
+import Header from "./components/Header";
 
 export default function HomeAT() {
     return (
         <div>
+            <Header />
             <div>
                 <h1>Редактиране на учители/ученици</h1>
             </div>
