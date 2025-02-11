@@ -21,14 +21,13 @@ const authenticate = (req, res, next) => {
   }
 }
 
-//TODO: scope?
 app.get('/auth/google', 
   passport.authenticate('google',  {scope: ['email', 'profile']})
 );
 
 app.get('/google/callback', 
   passport.authenticate('google', {
-    failureRedirect: '/failure'
+    failureRedirect: 'http://localhost:5173/'
   }), (req, res) => {
     const userPayload = { id: req.user.id, name: req.user.name, role: req.user.role};
     const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '3h'});
@@ -39,10 +38,6 @@ app.get('/google/callback',
     res.redirect('/home');
   }
 );
-
-app.get('/failure', (req, res) => {
-  res.redirect('http://localhost:5173/'); 
-}); 
 
 app.get('/home', (req, res) => { 
   const userRole = req.user.role;

@@ -85,7 +85,7 @@ export async function createTables() {
   create table if not exists Student(
     id int not null primary key,
     name varchar(64) not null,
-    email varchar(32) not null check(email like "%@%"),
+    email varchar(32) not null,
     constraint school_id foreign key(school_id) refferences School(id)
   )`);
 
@@ -137,7 +137,7 @@ export async function createTables() {
     term term not null,
     constraint school foreign key(school) references School(id)
   )`);
-  }
+}
 
 export async function getSchoolTypes() {
   const result = await pool.query(`select enum_range(NULL::school_type)`);
