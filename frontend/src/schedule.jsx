@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
+import Header from './components/Header';
 
 const Chas = ({boxes, onDragOver, onDragLeave, onDrop, position }) => {
     return boxes.length === 1 ? (
       <div
+        id={position === 'first' ? `first-${boxes[0].id}` : `second-${boxes[0].id}`}  
         onDrop={(event) => onDrop(event, boxes[0].id, position)}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
@@ -17,9 +19,10 @@ const Chas = ({boxes, onDragOver, onDragLeave, onDrop, position }) => {
       </div>
     ) : (
       <div>
-        {boxes.map((box) => (
+        {boxes.map((box, index) => (
           <div
             key={box.id}
+            id={index % 2 === 0 ? `${box.id}-odd` : `${box.id}-even`}
             onDrop={(event) => onDrop(event, box.id, position)}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -55,13 +58,13 @@ const Chas = ({boxes, onDragOver, onDragLeave, onDrop, position }) => {
         if (currentBoxes.length === 1) {
           if (dropX < thirdWidth) {
             return [
-              { id: `left-${boxId}`, content: itemLabel },
-              { id: `right-${boxId}`, content: existingClass }
+              { id: `${boxId}-odd`, content: itemLabel },
+              { id: `${boxId}-even`, content: existingClass }
             ];
           } else if (dropX > thirdWidth * 2) {
             return [
-              { id: `left-${boxId}`, content: existingClass },
-              { id: `right-${boxId}`, content: itemLabel }
+              { id: `${boxId}-odd`, content: existingClass },
+              { id: `${boxId}-even`, content: itemLabel }
             ];
           } else {
             return [{ id: boxId, content: itemLabel }];
@@ -190,6 +193,16 @@ export default function Schedule(props) {
         })
     }
 
+    const subjects = gradeChosenId ? useEffect(() => {
+        axios.get('http://localhost:5000//subject/grade/${gradeChosenId}')
+        .then((response) => setGradeSubjects(response.json()))
+        .catch((error) => console.error('error fetching data:', error))
+    }) : useEffect(() => {
+        axios.get('http://localhost:5000//subject/teacher/${teacherChosenId}')
+        .then((response) => setTeacherSubjects(response.json()))
+        .catch((error) => console.error('error fetching data:', error))
+    });
+
     const handleDragStart = (event) => {
         event.dataTransfer.setData("text/plain");
     }
@@ -206,8 +219,7 @@ export default function Schedule(props) {
     
     return (
         <div>
-            <header>
-            </header>
+            <Header />
             <body>
                 <div>
                     <div className="grade-teacher-lists">
