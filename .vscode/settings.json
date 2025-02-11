@@ -4,21 +4,11 @@
             "previewLimit": 50,
             "server": "localhost",
             "port": 5432,
+            "askForPassword": true,
             "driver": "PostgreSQL",
             "name": "diplomna",
-            "username": "pgsql",
-            "database": "uchilishte",
-            "password": "rootpswd"
-        },
-        {
-            "previewLimit": 50,
-            "server": "localhost",
-            "port": 5432,
-            "driver": "PostgreSQL",
-            "name": "uchilishte",
             "database": "diplomna",
-            "username": "postgres",
-            "password": "pgsqlpassword"
+            "username": "postgres"
         }
     ]
 }
