@@ -11,8 +11,6 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 
-console.log(process.env);
-
 const authenticate = (req, res, next) => {
   const token = req.cookies.authToken;
   if (token === process.env.SECRET_KEY) {
@@ -28,7 +26,7 @@ app.get('/auth/google',
 
 app.get('/google/callback', 
   passport.authenticate('google', {
-    failureRedirect: 'http://localhost:5173/'
+    failureRedirect: 'http://localhost:5173/fail'
   }), (req, res) => {
     const userPayload = { id: req.user.id, name: req.user.name, role: req.user.role};
     const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '3h'});
@@ -52,7 +50,7 @@ app.get('/home', (req, res) => {
   } else if(userRole === `student`) {
     res.redirect('http://localhost:5173/home/student');
   } else {
-    res.redirect('http://localhost:5173/');
+    res.redirect('http://localhost:5173/norole');
   }
 });
 

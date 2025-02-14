@@ -11,28 +11,38 @@ const pool = new Pool({
 
 export async function createTables() {
   //WARNING: may cause SQL injection if untrusted input is passed. Use it ONLY for migrations!!
+  console.log("nachaloto");
   async function ignore_duplicate(line) {
+    console.log("in ignore-a");
+    console.log('line:', line);
     await pool.query(`
-    DO $$ BEGIN
-      ${line}
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
-  `)}
+      DO $$ BEGIN
+        ${line}
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;`);
+    console.log('v kraq na ignore-a');
+  }
   
   try {
+    console.log('in the try');
     await ignore_duplicate(`create type user_role as ENUM ('site_admin', 'student', 'teacher', 'school_admin', 'teacher_admin');`)
 
+    console.log('predi users');
     await pool.query(`  
     create table if not exists "User" (
       id serial primary key,
-      google_id varchar(128) not null,
+      google_id varchar(256) not null,
       name varchar(64) not null,
       email varchar(64) not null unique,
       role user_role not null
     )`);
+    console.log('sled users');
     
     await ignore_duplicate(`create type school_type as ENUM('elementary', 'middle', 'high', 'college');`);
+
+    console.log('predi school');
+    await pool.query(`drop table if exists School cascade`);
 
     await pool.query(`
     create table if not exists School (
@@ -41,6 +51,7 @@ export async function createTables() {
       domain varchar(32) check(domain like '@%') unique not null,
       "type" school_type not null
     )`);
+    console.log('sled school');
 
     //TODO: refference 
     await pool.query(`
@@ -98,8 +109,12 @@ export async function createTables() {
       constraint school_id foreign key(school_id) references School(id)
     )`);
 
+    await pool.query(`drop table if exists Awaiting cascade`);
+    console.log("droping awaiting hopefully");
+
     await pool.query(`
     create table if not exists Awaiting (
+      id serial primary key not null,
       email varchar(64) not null unique,
       role user_role not null check(role <> 'site_admin'),
       chorarium int check(chorarium < 40),
@@ -152,7 +167,7 @@ export async function createTables() {
       constraint school_id foreign key(school_id) references School(id)
     )`);
   } finally {
-    pool.end();
+    //pool.end();
   }
 }
 
@@ -171,7 +186,7 @@ export async function isSchoolType(value) {
 
 export async function addSchool(name, domain, type) {
   const result = await pool.query(`insert into School(name, domain, type) values($1, $2, $3)
-  returning id, name`, name, domain, type);
+  returning id, name`, [name, domain, type]);
   return result;
 }
 
@@ -245,15 +260,15 @@ export async function studentIntoGrade(student_id, grade_id) {
 
 export async function addAwaiting(email, role, chorarium, teacher_type, school_id, grade_id) {
   const result = await pool.query(`insert into Awaiting(email, role, school_id) 
-  values($1, $2, $3) returning id`, email, role, school_id);
+  values($1, $2, $3) returning id`, [email, role, school_id]);
   if(chorarium) {
-    await pool.query(`update Awaiting set chorarium = $1 where id = $2`, chorarium, result.rows.id);
+    await pool.query(`update Awaiting set chorarium = $1 where id = $2`, [chorarium, result.rows.id]);
   }
   if(teacher_type) {
-    await pool.query(`update Awaiting set teacher_type = $1 where id = $2`, teacher_type, result.rows.id);
+    await pool.query(`update Awaiting set teacher_type = $1 where id = $2`, [teacher_type, result.rows.id]);
   }
   if(grade_id) {
-    await pool.query(`update Awaiting set grade_id = $1 where id = $2`, grade_id, result.rows.id);
+    await pool.query(`update Awaiting set grade_id = $1 where id = $2`, [grade_id, result.rows.id]);
   }
   return result.rows.id;
 }
@@ -319,21 +334,24 @@ async function staffIntoAdmin(staff_id) {
 }
 
 export async function findOrCreate(google_id, name, email) {
-  const user = await pool.query(`select * from User where google_id = $1`, google_id);
+  const user = await pool.query(`select * from "User" where google_id = $1`, [google_id]);
+  console.log("select from users");
   if(user.rows.length > 0) {
+    console.log("it found smth in users");
     return user;
   }
-  const result = await pool.query(`select * from Awaiting where email = $1`, email);
+  const result = await pool.query(`select * from Awaiting where email = $1`, [email]);
+  console.log('awaiting result:', result);
   if(result.rows.length > 0) {
     if(result.rows.role === "student") { 
       const newStudent = await pool.query(`insert into User (google_id, name, email, role) 
-      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 1);
+      values($1, $2, $3, $4) returning id, name, email, role`, [google_id, name, email, `student`]);
       addStudent(email);
       return newStudent;
     }
     if(result.rows.role === "teacher") {
       const newTeacher = await pool.query(`insert into User (google_id, name, email, role) 
-      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 2);
+      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, `teacher`);
       addStaff(email);
       if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
         throw new Error(`not enough data to create teacher`);
@@ -344,15 +362,16 @@ export async function findOrCreate(google_id, name, email) {
     }
     if(result.rows.role == "school_admin") {
       const newAdmin = await pool.query(`insert into User (google_id, name, email, role) 
-      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 3);
+      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, `school_admin`);
       addStaff(email);
       const id = await pool.query(`select id from Staff where email = $1`, email);
       staffIntoAdmin(id.rows.id);
+      console.log("added a new admin");
       return newAdmin;
     }
     if(result.rows.role === "teacher_admin") {
       const newStaff = await pool.query(`insert into User (google_id, name, email, role) 
-      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, 2);
+      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, `teacher_admin`);
       addStaff(email);
       if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
         throw new Error(`not enough data to create teacher`);
