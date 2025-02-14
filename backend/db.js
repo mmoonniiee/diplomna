@@ -1,6 +1,5 @@
-
 import pkg from 'pg';
-const {Pool} = pkg;
+const { Pool } = pkg;
 
 const pool = new Pool({
     host: process.env.DB_HOST,
@@ -10,134 +9,153 @@ const pool = new Pool({
     port: process.env.DB_PORT
 });
 
-await pool.connect();
-
 export async function createTables() {
-  await pool.query(`
-  create type user_type as ENUM("site_admin", "student", "teacher", "school_admin", "teacher_admin");
-  `);
-
-  await pool.query(`
-  create table if not exists User (
-    id int not null serial primary key,
-    google_id varchar(128) not null,
-    name varchar(64) not null,
-    email varchar(64) not null unique,
-    role user_role not null
-  )`);
+  //WARNING: may cause SQL injection if untrusted input is passed. Use it ONLY for migrations!!
+  async function ignore_duplicate(line) {
+    await pool.query(`
+    DO $$ BEGIN
+      ${line}
+    EXCEPTION
+      WHEN duplicate_object THEN null;
+    END $$;
+  `)}
   
-  await pool.query(`
-  create type school_type as ENUM("elementary", "middle", "high", "college");
-  `);
+  try {
+    await ignore_duplicate(`create type user_role as ENUM ('site_admin', 'student', 'teacher', 'school_admin', 'teacher_admin');`)
 
-  await pool.query(`
-  create table if not exists School (
-    id int not null serial primary key,
-    name not null varchar(256),
-    domain not null varchar(32) check(domain like "@%") unique,
-    type school_type not null
-  )`);
+    await pool.query(`  
+    create table if not exists "User" (
+      id serial primary key,
+      google_id varchar(128) not null,
+      name varchar(64) not null,
+      email varchar(64) not null unique,
+      role user_role not null
+    )`);
+    
+    await ignore_duplicate(`create type school_type as ENUM('elementary', 'middle', 'high', 'college');`);
 
-  await pool.query(`
-  create table if not exists Staff (
-    id int not null primary key,
-    name varchar(64) not null,
-    email varchar(64) not null,
-    constraint staff_school foreign key(staff_school) references School(id)
-  )`);
+    await pool.query(`
+    create table if not exists School (
+      id serial primary key,
+      name varchar(256) not null,
+      domain varchar(32) check(domain like '@%') unique not null,
+      "type" school_type not null
+    )`);
 
-  await pool.query(`
-  create type teacher_type as ENUM("full-time", "part-time")`);
+    //TODO: refference 
+    await pool.query(`
+    create table if not exists Staff (
+      id int not null primary key, 
+      name varchar(64) not null,
+      email varchar(64) not null,
+      staff_school int not null,
+      constraint staff_school foreign key(staff_school) references School(id)
+    )`);
 
-  await pool.query(`
-  create table if not exists Teacher(
-    id int not null primary key,
-    name varchar(64) not null,
-    email varchar(64) not null,
-    type teacher_type not null,
-    chorarium int not null check(chorarium < 40),
-    constraint teacher_school foreign key(teacher_school) references School(id)
-  )`);
+    await ignore_duplicate(`create type teacher_type as ENUM('full-time', 'part-time');`);
 
-  await pool.query(`
-  create table if not exists Admin(
-    id int not null primary key,
-    name varchar(64) not null,
-    email varchar(64) not null, 
-    constraint admin_school foreign key(admin_school) references School(id)
-  )`);
-  
-  await pool.query(`
-  create type shift as ENUM("first", "second")`);
+    await pool.query(`
+    create table if not exists Teacher(
+      id int not null primary key,
+      name varchar(64) not null,
+      email varchar(64) not null,
+      type teacher_type not null,
+      chorarium int not null check(chorarium < 40),
+      teacher_school int not null,
+      constraint teacher_school foreign key(teacher_school) references School(id)
+    )`);
 
-  await pool.query(`
-  create table if not exists Grade(
-    id int not null serial primary key,
-    subgroup varchar(5) not null unique,
-    graduation_year int not null check(grad_year < CURRENT_DATE),
-    1st_term shift not null,
-    2nd_term shift not null,
-    constraint grade_teacher foreign key(grade_teacher) references Teacher(id),
-    constraint school_grade foreign key(school_grade) references School(id)
-  )`);
+    await pool.query(`
+    create table if not exists Admin(
+      id int not null primary key,
+      name varchar(64) not null,
+      email varchar(64) not null, 
+      admin_school int not null,
+      constraint admin_school foreign key(admin_school) references School(id)
+    )`);
+    
+    await ignore_duplicate(`create type shift as ENUM('first', 'second');`);
 
-  await pool.query(`
-  create table if not exists Student(
-    id int not null primary key,
-    name varchar(64) not null,
-    email varchar(32) not null,
-    constraint school_id foreign key(school_id) refferences School(id)
-  )`);
+    await pool.query(`
+    create table if not exists Grade(
+      id serial primary key,
+      subgroup varchar(5) not null unique,
+      graduation_year int not null check(graduation_year < extract(year from CURRENT_DATE)),
+      first_term shift not null,
+      second_term shift not null,
+      grade_teacher int not null,
+      school_grade int not null,
+      constraint grade_teacher foreign key(grade_teacher) references Teacher(id),
+      constraint school_grade foreign key(school_grade) references School(id)
+    )`);
 
-  await pool.query(`
-  create table if not exists Awaiting (
-    email varchar(64) not null unique,
-    role user_role not null check (role > 0),
-    chorarium int check(chorarium < 40),
-    teacher_type teacher_type,
-    constraint school_id foreign key(school_id) references School(id),
-    constraint grade_id foreign key(grade_id) references Grade(id)
-  )`);
+    await pool.query(`
+    create table if not exists Student(
+      id int not null primary key,
+      name varchar(64) not null,
+      email varchar(32) not null,
+      school_id int not null,
+      constraint school_id foreign key(school_id) references School(id)
+    )`);
 
-  await pool.query(`
-  create type term as ENUM("both", "first", "second")`);
+    await pool.query(`
+    create table if not exists Awaiting (
+      email varchar(64) not null unique,
+      role user_role not null check(role <> 'site_admin'),
+      chorarium int check(chorarium < 40),
+      teacher_type teacher_type,
+      school_id int not null,
+      grade_id int,
+      constraint school_id foreign key(school_id) references School(id),
+      constraint grade_id foreign key(grade_id) references Grade(id)
+    )`);
 
-  await pool.query(`
-  create table if not exists Subject(
-    id int not null serial primary key,
-    name varchar(64) not null,
-    chorarium int not null check(chorarium < 40),
-    term term not null,
-    constraint school_id foreign key(school_id) refferences School(id)
-  )`);
+    await ignore_duplicate(`create type term as ENUM('both', 'first', 'second');`);
 
-  await pool.query(`
-  create table if not exists SubjectGradeTeacher(
-    id int not null serial primary key,
-    constraint subject_id foreign key(subject_id) references Subject(id)
-    constraint grade_id foreign key(grade_id) references Grade(id),
-    constraint teacher_id foreign key(teacher_id) references Teacher(id)
-  )`);
+    await pool.query(`
+    create table if not exists Subject(
+      id serial primary key,
+      name varchar(64) not null,
+      chorarium int not null check(chorarium < 40),
+      term term not null,
+      school_id int not null,
+      constraint school_id foreign key(school_id) references School(id)
+    )`);
 
-  await pool.query(`
-  create type week_type as ENUM("odd", "even", "both")`);
+    await pool.query(`
+    create table if not exists SubjectGradeTeacher(
+      id serial primary key,
+      subject_id int not null,
+      grade_id int not null,
+      teacher_id int not null,
+      constraint subject_id foreign key(subject_id) references Subject(id),
+      constraint grade_id foreign key(grade_id) references Grade(id),
+      constraint teacher_id foreign key(teacher_id) references Teacher(id)
+    )`);
 
-  await pool.query(`
-  create type weekday as ENUM("monday", "tuesday", "wednesday", "thursday", "friday")`);
+    await ignore_duplicate(`create type week_type as ENUM('odd', 'even', 'both');`);
 
-  await pool.query(`
-  create table if not exists Class(
-    id int serial primary key not null,
-    constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
-    week_taught week_type not null,
-    weekday_taught weekday not null,
-    class_number int not null,
-    start_time time not null,
-    end_time time not null,
-    term term not null,
-    constraint school foreign key(school) references School(id)
-  )`);
+    await ignore_duplicate(`create type weekday as ENUM('monday', 'tuesday', 'wednesday', 'thursday', 'friday');`);
+
+    await pool.query(`
+    create table if not exists Class(
+      id serial primary key,
+      week_taught week_type not null,
+      weekday_taught weekday not null,
+      class_number int not null,
+      start_time time not null,
+      end_time time not null,
+      term term not null,
+      school_id int not null,
+      subject_taught int not null,
+      constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
+      constraint school_id foreign key(school_id) references School(id)
+    )`);
+  } finally {
+    pool.end();
+  }
 }
+
 
 export async function getSchoolTypes() {
   const result = await pool.query(`select enum_range(NULL::school_type)`);

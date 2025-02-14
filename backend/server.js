@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express from 'express';
 import passport from 'passport';
 import cors from 'cors';
@@ -11,6 +10,8 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+
+console.log(process.env);
 
 const authenticate = (req, res, next) => {
   const token = req.cookies.authToken;
