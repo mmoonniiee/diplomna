@@ -196,9 +196,9 @@ export async function removeSchool(school_id) {
 
 const getSchoolId = async (domain) => {
   try {
-    result = await pool.query(`select id from School where domain = $1`, domain);
+    const result = await pool.query(`select id from School where domain = $1`, [domain]);
     if (result.rows.length > 0) {
-      return result.row[0].domain;
+      return result.rows[0].id;
     }
     else {
       throw new Error("School domain not found");
@@ -211,7 +211,7 @@ const getSchoolId = async (domain) => {
 }
 
 async function addStudent(email){
-  const result = await pool.query(`select id, name from User where email = $1`, email);
+  const result = await pool.query(`select id, name from "User" where email = $1`, email);
   if(!result.rows.length > 0) {
     throw new Error(`there's no user like that`);
   }
@@ -274,20 +274,27 @@ export async function addAwaiting(email, role, chorarium, teacher_type, school_i
 }
 
 export async function addStaff(email){
-  const result = await pool.query(`select id, name from User where email = $1`, email);
+  console.log("in add staff");
+  const result = await pool.query(`select id, name from "User" where email = $1`, [email]);
   if(!result.rows.length > 0) {
     throw new Error(`there's no user like that`);
   }
   const match = email.match(/@(.*)/); 
+  console.log('match:', match);
   const domain = match[0];
+  console.log('domain:', domain);
+  let school_id;
   try {
-    school_id = getSchoolId(domain);
+    school_id = await getSchoolId(domain);
+    console.log("imame school id (yupiee)");
   }
   catch (error) {
     console.error(error);
   }
+  console.log([result.rows[0].id, result.rows[0].name, email, school_id]);
   const id = await pool.query(`insert into Staff(id, name, email, staff_school) 
-  values($1, $2, $3, $4) returning id, name`, result.rows.id, result.rows.name, email, school_id);
+  values($1, $2, $3, $4) returning id, name`, [result.rows[0].id, result.rows[0].name, email, school_id]);
+  console.log("added staff?");
   return id;
 }
 
@@ -327,9 +334,9 @@ export async function getAllTeachers(school_id) {
 }
 
 async function staffIntoAdmin(staff_id) {
-  const result = await pool.query(`insert into Admin (id, name, email, school_id)
+  const result = await pool.query(`insert into Admin (id, name, email, admin_school)
   select id, name, email, staff_school from Staff
-  where Staff(id) = $1 returning id, name`, staff_id);
+  where Staff.id = $1 returning id, name`, [staff_id]);
   return result;
 }
 
@@ -341,51 +348,54 @@ export async function findOrCreate(google_id, name, email) {
     return user;
   }
   const result = await pool.query(`select * from Awaiting where email = $1`, [email]);
-  console.log('awaiting result:', result);
+  console.log("role:", result.rows[0].role);
   if(result.rows.length > 0) {
-    if(result.rows.role === "student") { 
+    if(result.rows[0].role === "student") { 
       const newStudent = await pool.query(`insert into User (google_id, name, email, role) 
       values($1, $2, $3, $4) returning id, name, email, role`, [google_id, name, email, `student`]);
       addStudent(email);
       return newStudent;
     }
-    if(result.rows.role === "teacher") {
-      const newTeacher = await pool.query(`insert into User (google_id, name, email, role) 
-      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, `teacher`);
+    if(result.rows[0].role === "teacher") {
+      const newTeacher = await pool.query(`insert into "User" (google_id, name, email, role) 
+      values($1, $2, $3, $4) returning id, name, email, role`, [google_id, name, email, `teacher`]);
       addStaff(email);
-      if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
+      if((!result.rows[0].chorarium) || (!result.rows[0].teacher_type)) {
         throw new Error(`not enough data to create teacher`);
       }
       const id = await pool.query(`select id from Staff where email = $1`, email);
-      staffIntoTeacher(id.rows.id, result.rows.chorarium, result.rows.teacher_type);
+      staffIntoTeacher(id.rows[0].id, result.rows[0].chorarium, result.rows[0].teacher_type);
       return newTeacher;
     }
-    if(result.rows.role == "school_admin") {
-      const newAdmin = await pool.query(`insert into User (google_id, name, email, role) 
-      values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, `school_admin`);
+    if(result.rows[0].role == "school_admin") {
+      const newAdmin = await pool.query(`insert into "User" (google_id, name, email, role)
+      values($1, $2, $3, $4) returning id, name, email, role`, [google_id, name, email, `school_admin`]);
+      console.log("napravihme si user za school admin");
       addStaff(email);
-      const id = await pool.query(`select id from Staff where email = $1`, email);
-      staffIntoAdmin(id.rows.id);
+      console.log("stanahme i staff v dsk");
+      const id = await pool.query(`select id from Staff where email = $1`, [email]);
+      staffIntoAdmin(id.rows[0].id);
+      console.log("stanahme i admin");
       console.log("added a new admin");
       return newAdmin;
     }
-    if(result.rows.role === "teacher_admin") {
-      const newStaff = await pool.query(`insert into User (google_id, name, email, role) 
+    if(result.rows[0].role === "teacher_admin") {
+      const newStaff = await pool.query(`insert into "User" (google_id, name, email, role) 
       values($1, $2, $3, $4) returning id, name, email, role`, google_id, name, email, `teacher_admin`);
       addStaff(email);
-      if((!result.rows.chorarium) || (!result.rows.teacher_type)) {
+      if((!result.rows[0].chorarium) || (!result.rows[0].teacher_type)) {
         throw new Error(`not enough data to create teacher`);
       }
       const id = await pool.query(`select id from Staff where email = $1`, email);
-      staffIntoTeacher(id.rows.id, result.rows.chorarium, result.rows.teacher_type);
-      staffIntoAdmin(id.rows.id);
+      staffIntoTeacher(id.rows[0].id, result.rows[0].chorarium, result.rows[0].teacher_type);
+      staffIntoAdmin(id.rows[0].id);
       return newStaff;
     }
   }
 }
 
 export async function getUser(id) {
-  const result = await pool.query(`select * from User where google_id = $1`, id);
+  const result = await pool.query(`select * from "User" where google_id = $1`, id);
   return result;
 }
 
