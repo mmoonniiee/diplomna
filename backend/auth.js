@@ -9,12 +9,10 @@ passport.use(new GoogleStrategy({
     callbackURL: "http://localhost:5000/google/callback"
   },
   async function(accessToken, refreshToken, profile, cb) {
-    console.log('access token:', accessToken);
-    console.log('refresh token:', refreshToken);
     //TODO: get pfp
     try {
       const user = await findOrCreate(profile.id, profile.displayName, profile.emails[0].value);
-      console.log('user:', user);
+      console.log('google user:', user);
       return cb(null, user);
     } catch (err) {
       return cb(err, null);
