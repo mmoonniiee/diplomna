@@ -36,7 +36,7 @@ app.get('/google/callback',
     console.log('token:', token);
     res.cookie('authToken', token, {
       httpOnly: true,
-      maxAge: 10800000
+      maxAge: 3 * 60 * 60 * 1000
     });
     res.redirect('/home');
   }
