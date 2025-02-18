@@ -28,12 +28,8 @@ app.get('/google/callback',
   passport.authenticate('google', { session: false,
     failureRedirect: 'http://localhost:5173/fail'
   }), (req, res) => {
-    console.log('requestm1:', req);
-    console.log('req user:', req.user); 
     const userPayload = { id: req.user.rows[0].id, name: req.user.rows[0].name, role: req.user.rows[0].role};
-    console.log('payload:', userPayload);
     const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '3h'});
-    console.log('token:', token);
     res.cookie('authToken', token, {
       httpOnly: true,
       maxAge: 3 * 60 * 60 * 1000
@@ -43,10 +39,7 @@ app.get('/google/callback',
 );
 
 app.get('/home', (req, res) => { 
-  console.log("cookiem:", req.cookies);
   const decoded = jwt.decode(req.cookies.authToken);
-  console.log('decoded:', decoded);
-  console.log('user:', req.user);
   const userRole = decoded.role;
 
   if(userRole === `teacher_admin`) {
