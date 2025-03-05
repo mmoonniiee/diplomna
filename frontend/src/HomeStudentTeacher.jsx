@@ -1,13 +1,10 @@
-import React from 'react';
-import Header from './components/Header';
+import {Link} from 'react-router';
 import ScheduleButton from './components/ScheduleButton';
-import SchedulePage from './SchedulePage.jsx'
 
 export default function HomeST() {
     return (
         <div>
-            <Header />
-            <a href="/schedule"><ScheduleButton /></a>
+            <Link to="/schedule"><ScheduleButton /></Link>
         </div>
     )
 }
