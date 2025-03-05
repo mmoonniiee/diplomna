@@ -11,24 +11,18 @@ const pool = new Pool({
 
 export async function createTables() {
   //WARNING: may cause SQL injection if untrusted input is passed. Use it ONLY for migrations!!
-  console.log("nachaloto");
   async function ignore_duplicate(line) {
-    console.log("in ignore-a");
-    console.log('line:', line);
     await pool.query(`
       DO $$ BEGIN
         ${line}
       EXCEPTION
         WHEN duplicate_object THEN null;
       END $$;`);
-    console.log('v kraq na ignore-a');
   }
   
   try {
-    console.log('in the try');
-    await ignore_duplicate(`create type user_role as ENUM ('site_admin', 'student', 'teacher', 'school_admin', 'teacher_admin');`)
+    await ignore_duplicate(`create type user_role as ENUM ('site_admin', 'student', 'teacher', 'school_admin', 'teacher_admin');`);
 
-    console.log('predi users');
     await pool.query(`  
     create table if not exists "User" (
       id serial primary key,
@@ -37,12 +31,8 @@ export async function createTables() {
       email varchar(64) not null unique,
       role user_role not null
     )`);
-    console.log('sled users');
     
     await ignore_duplicate(`create type school_type as ENUM('elementary', 'middle', 'high', 'college');`);
-
-    console.log('predi school');
-    await pool.query(`drop table if exists School cascade`);
 
     await pool.query(`
     create table if not exists School (
@@ -51,9 +41,7 @@ export async function createTables() {
       domain varchar(32) check(domain like '@%') unique not null,
       "type" school_type not null
     )`);
-    console.log('sled school');
 
-    //TODO: refference 
     await pool.query(`
     create table if not exists Staff (
       id int not null primary key, 
@@ -70,7 +58,7 @@ export async function createTables() {
       id int not null primary key,
       name varchar(64) not null,
       email varchar(64) not null,
-      type teacher_type not null,
+      "type" teacher_type not null,
       chorarium int not null check(chorarium < 40),
       teacher_school int not null,
       constraint teacher_school foreign key(teacher_school) references School(id)
@@ -91,7 +79,7 @@ export async function createTables() {
     create table if not exists Grade(
       id serial primary key,
       subgroup varchar(5) not null unique,
-      graduation_year int not null check(graduation_year < extract(year from CURRENT_DATE)),
+      graduation_year int not null check(graduation_year > extract(year from CURRENT_DATE)),
       first_term shift not null,
       second_term shift not null,
       grade_teacher int not null,
@@ -106,15 +94,14 @@ export async function createTables() {
       name varchar(64) not null,
       email varchar(32) not null,
       school_id int not null,
-      constraint school_id foreign key(school_id) references School(id)
+      grade_id int not null,
+      constraint school_id foreign key(school_id) references School(id),
+      constraint grade_id foreign key(grade_id) references Grade(id)
     )`);
-
-    await pool.query(`drop table if exists Awaiting cascade`);
-    console.log("droping awaiting hopefully");
 
     await pool.query(`
     create table if not exists Awaiting (
-      id serial primary key not null,
+      id serial primary key,
       email varchar(64) not null unique,
       role user_role not null check(role <> 'site_admin'),
       chorarium int check(chorarium < 40),
@@ -161,6 +148,8 @@ export async function createTables() {
       start_time time not null,
       end_time time not null,
       term term not null,
+      teacher_see bool default false,
+      student_see bool default false,
       school_id int not null,
       subject_taught int not null,
       constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
@@ -171,23 +160,24 @@ export async function createTables() {
   }
 }
 
-
 export async function getSchoolTypes() {
-  const result = await pool.query(`select enum_range(NULL::school_type)`);
-  return result;
+  const result = await pool.query(`select e.enumlabel from pg_enum as e
+  left join pg_type as t on t.oid = e.enumtypid where t.typname = 'school_type'
+  order by t.typname, e.enumsortorder;`);
+  return result.rows.map((row) => row.enumlabel);
 }
 
 export async function isSchoolType(value) {
   const result = await pool.query(`select exists (select 1 from school_type 
     where typname = 'school_type' 
     and $1::status_enum is not null)`, [value]);
-    return (result.rows[0].exists);
+  return (result.rows[0].exists);
 }
 
 export async function addSchool(name, domain, type) {
   const result = await pool.query(`insert into School(name, domain, type) values($1, $2, $3)
   returning id, name`, [name, domain, type]);
-  return result;
+  return result.rows;
 }
 
 export async function removeSchool(school_id) {
@@ -225,7 +215,7 @@ async function addStudent(email){
   }
   const id = await pool.query(`insert into Student(id, name, email, student_school) 
   values($1, $2, $3) returning id, name`, [result.rows.id, result.rows.name, email, school_id]);
-  return id;
+  return id.rows;
 }
 
 export async function removeStudent(student_id) {
@@ -234,24 +224,32 @@ export async function removeStudent(student_id) {
 
 export async function getStudent(student_id, school_id) {
   const result = await pool.query(`select name, email from Student 
-  where Student(id) = $1 and Student(school_id) = $2`, [student_id, school_id]);
-  return result;
+  where id = $1 and school_id = $2`, [student_id, school_id]);
+  return result.rows;
 }
 
-export async function addGrade(subgroup, grad_year) {
-  const result = await pool.query(`insert into Grade (subgroup, graduation_year) values($1, $2) 
-  returning id, subgroup`, [subgroup, grad_year]);
-  return result;
+export async function getShifts() {
+  const result = await pool.query(`select e.enumlabel from pg_enum as e
+  left join pg_type as t on t.oid = e.enumtypid where t.typname = 'shift'
+  order by t.typname, e.enumsortorder;`);
+  return result.rows.map((row) => row.enumlabel);
+}
+
+export async function addGrade(subgroup, grad_year, first_shift, second_shift, teacher_id, school_id) {
+  const result = await pool.query(`insert into Grade (subgroup, graduation_year, first_term, 
+  second_term, grade_teacher, school_grade) values($1, $2, $3, $4, $5, $6) 
+  returning id, subgroup`, [subgroup, grad_year, first_shift, second_shift, teacher_id, school_id]);
+  return result.rows;
 }
 
 export async function getGrade(grade_id) {
   const result = await pool.query(`select * from Grade where id = $1`, [grade_id]);
-  return result;
+  return result.rows;
 }
 
 export async function getAllGrades(school_id) {
-  const result = await pool.query(`select * from Grade where school_id = $1`, [school_id]);
-  return result; 
+  const result = await pool.query(`select * from Grade where school_grade = $1`, [school_id]);
+  return result.rows; 
 }
 
 export async function studentIntoGrade(student_id, grade_id) {
@@ -274,7 +272,6 @@ export async function addAwaiting(email, role, chorarium, teacher_type, school_i
 }
 
 export async function addStaff(email){
-  console.log("in add staff");
   const result = await pool.query(`select id, name from "User" where email = $1`, [email]);
   if(!result.rows.length > 0) {
     throw new Error(`there's no user like that`);
@@ -290,7 +287,7 @@ export async function addStaff(email){
   }
   const id = await pool.query(`insert into Staff(id, name, email, staff_school) 
   values($1, $2, $3, $4) returning id, name`, [result.rows[0].id, result.rows[0].name, email, school_id]);
-  return id;
+  return id.rows;
 }
 
 export async function removeStaff(staff_id) {
@@ -301,55 +298,69 @@ export async function removeStaff(staff_id) {
 
 export async function getStaff(staff_id) {
   const result = await pool.query(`select name, email from Staff where Staff(id) = $1`, [staff_id]);
-  return result;
+  return result.rows;
 }
 
 export async function isTeacherType(value) {
-  const result = await pool.query(`select exists (select 1 from teacher_type 
-    where typname = 'teacher_type' 
-    and $1::status_enum is not null)`, [value]);
-    return result.rows[0].exists;
+  const result = await pool.query(`select exists (
+    select 1 from pg_enum as e join pg_type as t
+    on t.oid = e.enumtypid where t.typname = 'teacher_type' 
+    and e.enumlabel = $1)`, [value]);
+  return result.rows[0].exists;
 }
 
-async function staffIntoTeacher(staff_id, type, chorarium) {
-  const result = await pool.query(`insert into Teacher (id, name, email, type, chorarium, school_id)
-  select id, name, email, $1, $2, staff_school from Staff
-  where Staff(id) = $1 returning id, name`, [type, chorarium, staff_id]);
-  return result;
+export async function staffIntoTeacher(staff_id, type, chorarium) {
+  const result = await pool.query(`insert into Teacher (id, name, email, type, 
+  chorarium, teacher_school) select id, name, email, $2, $3, staff_school 
+  from Staff where id = $1 returning id, name, teacher_school`, [staff_id, type, chorarium]);
+  return result.rows;
 }
 
 export async function getTeacher(teacher_id) {
   const result = await pool.query(`select name, email, chorarium, type from Teacher where Teacher(id) = $1`, [teacher_id]);
-  return result;
+  return result.rows;
 }
 
 export async function getAllTeachers(school_id) {
-  const result = await pool.query(`select * from Teacher where school_id = $1`, [school_id]);
-  return result;
+  const result = await pool.query(`select * from Teacher where teacher_school = $1`, [school_id]);
+  return result.rows;
 }
 
 async function staffIntoAdmin(staff_id) {
   const result = await pool.query(`insert into Admin (id, name, email, admin_school)
   select id, name, email, staff_school from Staff
   where Staff.id = $1 returning id, name`, [staff_id]);
-  return result;
+  return result.rows;
 }
 
 export async function findOrCreate(google_id, name, email) {
   const user = await pool.query(`select * from "User" where google_id = $1`, [google_id]);
-  console.log("select from users");
   if(user.rows.length > 0) {
-    console.log("it found smth in users");
-    return user;
+    if(user.rows[0].role === "student") {
+      const student = await pool.query(`select school_id from Student where id = $1`, [user.rows[0].id]);
+      return {...user.rows[0], schoolID: student.rows[0].school_id};
+    }
+    if(user.rows[0].role === "teacher") {
+      const teacher = await pool.query(`select teacher_school from Teacher where id = $1`, [user.rows[0].id]);
+      console.log(teacher.rows);
+      return {...user.rows[0], schoolID: teacher.rows[0].teacher_school};
+    }
+    if(user.rows[0].role === "school_admin") {
+      const admin = await pool.query(`select admin_school from Admin where id = $1`, [user.rows[0].id]);
+        return {...user.rows[0], schoolID: admin.rows[0].admin_school};
+    }
+    if(user.rows[0].role === "teacher_admin") {
+      const teacher = await pool.query(`select teacher_school from Teacher where id = $1`, [user.rows[0].id]);
+      return {...user.rows[0], schoolID: teacher.rows[0].teacher_school};
+    }
   }
   const result = await pool.query(`select * from Awaiting where email = $1`, [email]);
-  console.log("role:", result.rows[0].role);
   if(result.rows.length > 0) {
     if(result.rows[0].role === "student") { 
       const newStudent = await pool.query(`insert into "User" (google_id, name, email, role) 
       values($1, $2, $3, $4) returning id, name, email, role`, [google_id, name, email, `student`]);
       addStudent(email);
-      return newStudent;
+      return newStudent.rows[0];
     }
     if(result.rows[0].role === "teacher") {
       const newTeacher = await pool.query(`insert into "User" (google_id, name, email, role) 
@@ -360,7 +371,7 @@ export async function findOrCreate(google_id, name, email) {
       }
       const id = await pool.query(`select id from Staff where email = $1`, email);
       staffIntoTeacher(id.rows[0].id, result.rows[0].chorarium, result.rows[0].teacher_type);
-      return newTeacher;
+      return newTeacher.rows[0];
     }
     if(result.rows[0].role == "school_admin") {
       const newAdmin = await pool.query(`insert into "User" (google_id, name, email, role)
@@ -368,7 +379,7 @@ export async function findOrCreate(google_id, name, email) {
       addStaff(email);
       const id = await pool.query(`select id from Staff where email = $1`, [email]);
       staffIntoAdmin(id.rows[0].id);
-      return newAdmin;
+      return newAdmin.rows[0];
     }
     if(result.rows[0].role === "teacher_admin") {
       const newStaff = await pool.query(`insert into "User" (google_id, name, email, role) 
@@ -380,26 +391,35 @@ export async function findOrCreate(google_id, name, email) {
       const id = await pool.query(`select id from Staff where email = $1`, email);
       staffIntoTeacher(id.rows[0].id, result.rows[0].chorarium, result.rows[0].teacher_type);
       staffIntoAdmin(id.rows[0].id);
-      return newStaff;
+      return newStaff.rows[0];
     }
   }
 }
 
 export async function getUser(id) {
   const result = await pool.query(`select * from "User" where google_id = $1`, [id]);
-  return result;
+  return result.rows;
 }
 
-export async function isTermType(value) {
-  const result = await pool.query(`select exists (select 1 from term 
-    where typname = 'term' and $1::status_enum is not null)`, [value]);
-    return result.rows[0].exists;
+export async function getTerms() {
+  const result = await pool.query(`select e.enumlabel from pg_enum as e
+  left join pg_type as t on t.oid = e.enumtypid where t.typname = 'term'
+  order by t.typname, e.enumsortorder;`);
+  return result.rows.map((row) => row.enumlabel);
+}
+
+export async function isTermType(term) {
+  const result = await pool.query(`select exists (
+    select 1 from pg_enum as e join pg_type as t
+    on t.oid = e.enumtypid where t.typname = 'term' 
+    and e.enumlabel = $1)`, [term]);
+  return result.rows[0].exists;
 }
 
 export async function addSubject(name, chorarium, term, school_id) {
   const result = await pool.query(`insert into Subject (name, chorarium, term, school_id) 
-  values ($1, $2, $3, $4) returning id, name`, [name, chorarium, term, school_id]);
-  return result;
+  values ($1, $2, $3, $4) returning id`, [name, chorarium, term, school_id]);
+  return result.rows[0];
 }
 
 export async function removeSubject(subject_id) {
@@ -408,43 +428,62 @@ export async function removeSubject(subject_id) {
 }
 
 export async function getSubject(subject_id) {
-  const result = await pool.query(`select name, chorarium, term from Subject where Subject(id) = $1`, [subject_id]);
-  return result;
+  const result = await pool.query(`select * from Subject where id = $1`, [subject_id]);
+  return result.rows[0];
 }
 
-export async function subjectTeacherGrade(subject_id, grade_id, teacher_id) {
+export async function getSubjects(school_id) {
+  const result = await pool.query(`select * from Subject where school_id = $1`, [school_id]);
+  return result.rows;
+}
+
+export async function insertSubjectTeacherGrade(subject_id, grade_id, teacher_id) {
   const result = await pool.query(`insert into SubjectGradeTeacher (subject_id, grade_id, teacher_id) 
   values ($1, $2, $3) returning id`, [subject_id, grade_id, teacher_id]);
-  return result;
+  return result.rows;
 }
 
 export async function getTeacherSubjects(teacher_id) {
-  const result = await pool.query(`select name, chorarium, term from Subject 
-  left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id 
-  where SGT.teacher_id = $1`, [teacher_id]);
-  return result;
+  const result = await pool.query(`select Subject.id, Subject.name, Subject.chorarium, Subject.term, SGT.id from Subject  
+  left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.teacher_id = $1`, [teacher_id]);
+  return result.rows;
 }
 
 export async function getGradeSubjects(grade_id) {
-  const result = await pool.query(`select id, name, chorarium, term from Subject 
-  left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id 
-  where SGT.grade_id = $1`, [grade_id]);
-  return result;
+  const result = await pool.query(`select Subject.id, Subject.name, Subject.chorarium, Subject.term, SGT.id from Subject  
+  left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.grade_id = $1`, [grade_id]);
+  return result.rows;
 }
 
 export async function insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id){
-  await pool.query(`insert into Class values(subject_taught, week_taught, weekday_taught, start_time, end_time, term, school_id)
+  await pool.query(`insert into Class (subject_taught, week_taught, weekday_taught, class_number start_time, end_time, term, school_id)
   values ($1, $2, $3, $4, $5, $6, $7, $8)`, [sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id]);
 }
 
-export async function getGradeSchedule(grade_id) {
-  const result = await pool.query(`select * from Class join SubjectGradeTeacher as SGT 
-  on Class.subject_taught = SGT.id where SGT.grade_id = $1`, [grade_id]);
-  return result;
+export async function getGradeSchedule(grade_id, term) {
+  const result = await pool.query(`select Class.subject_taught, Class.week_taught, Class.weekday_taught,
+  Class.class_number, Class.start_time, Class.end_time, 
+  Class.term, Class.school_id, Subject.name as subject_name,
+  Teacher.name as teacher_name from Class 
+  left join subjectgradeteacher as SGT
+  on Class.subject_taught = SGT.id
+  left join Subject on SGT.subject_id = Subject.id
+  left join Teacher on SGT.teacher_id = Teacher.id
+  where SGT.grade_id = $1 and term = $2
+  order by weekday_taught, class_number`, [grade_id, term]);
+  return result.rows;
 }
 
-export async function getTeacherSchedule(teacher_id) {
-  const result = await pool.query(`select * from Class join SubjectGradeTeacher as SGT 
-  on Class.subject_taught = SGT.id where SGT.teacher_id = $1`, [teacher_id]);
-  return result;
+export async function getTeacherSchedule(teacher_id, term) {
+  const result = await pool.query(`select Class.subject_taught, Class.week_taught, Class.weekday_taught,
+  Class.class_number, Class.start_time, Class.end_time, 
+  Class.term, Class.school_id, Subject.name as subject_name,
+  Teacher.name as teacher_name from Class 
+  left join subjectgradeteacher as SGT
+  on Class.subject_taught = SGT.id
+  left join Subject on SGT.subject_id = Subject.id
+  left join Teacher on SGT.teacher_id = Teacher.id
+  where SGT.teacher_id = $1 and term - $2
+  order by weekday_taught, class_number`, [teacher_id, term]);
+  return result.rows;
 }
