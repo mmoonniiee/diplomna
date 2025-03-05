@@ -28,12 +28,8 @@ app.get('/google/callback',
   passport.authenticate('google', { session: false,
     failureRedirect: 'http://localhost:5173/fail'
   }), (req, res) => {
-    console.log('requestm1:', req);
-    console.log('req user:', req.user); 
-    const userPayload = { id: req.user.rows[0].id, name: req.user.rows[0].name, role: req.user.rows[0].role};
-    console.log('payload:', userPayload);
+    const userPayload = { id: req.user.id, name: req.user.name, role: req.user.role, schoolId: req.user.schoolID};
     const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '3h'});
-    console.log('token:', token);
     res.cookie('authToken', token, {
       httpOnly: true,
       maxAge: 3 * 60 * 60 * 1000
@@ -43,22 +39,18 @@ app.get('/google/callback',
 );
 
 app.get('/home', (req, res) => { 
-  console.log("cookiem:", req.cookies);
   const decoded = jwt.decode(req.cookies.authToken);
-  console.log('decoded:', decoded);
-  console.log('user:', req.user);
   const userRole = decoded.role;
+  const schoolId = decoded.schoolId;
 
   if(userRole === `teacher_admin`) {
-    res.redirect('http://localhost:5173/home/teacheradmin');
+    res.redirect(`http://localhost:5173/school/${schoolId}/home/admin/teacher`);
   } else if(userRole === `school_admin`) {
-    res.redirect('http://localhost:5173/home/admin');
-  } else if(userRole === `teacher`) {
-    res.redirect('http://localhost:5173/home/teacher');
-  } else if(userRole === `student`) {
-    res.redirect('http://localhost:5173/home/student');
+    res.redirect(`http://localhost:5173/school/${schoolId}/home/admin`);
+  } else if(userRole === `teacher` || userRole === `student`) {
+    res.redirect(`http://localhost:5173/school/${schoolId}/home`);
   } else {
-    res.redirect('http://localhost:5173/norole');
+    res.redirect(`http://localhost:5173/norole`);
   }
 });
 
@@ -78,126 +70,160 @@ app.post('/school', async (req, res) => {
 
 app.post('/school/:id/awaiting', async (req, res) => {
   const {email, role, chorarium, teacher_type, school_id, grade_id} = req.body;
-  const result = db.addAwaiting(email, role, chorarium, teacher_type, school_id, grade_id);
+  const result = await db.addAwaiting(email, role, chorarium, teacher_type, school_id, grade_id);
+  res.json(result);
+});
+
+app.get('/shifts', async (req, res) => {
+  const result = await db.getShifts();
+  res.json(result);
+});
+
+app.post('/school/:id/grade', async (req, res) => {
+  const {subgroup, grad_year, first_term, second_term, teacher_id} = req.body;
+  const school_id = req.params.id;
+  const result = await db.addGrade(subgroup, grad_year, first_term, second_term, teacher_id, school_id);
   res.json(result);
 });
 
 app.post('/school/:id/students', async (req, res) => {
   const {name, email} = req.body;
-  const result = db.addStudent(name, email);
+  const result = await db.addStudent(name, email);
   res.json(result);
 });
 
 app.post('/school/:id/staff', async (req, res) => {
   const {name, email} = req.body;
-  const result = db.addStaff(name, email);
+  const result = await db.addStaff(name, email);
   res.json(result);
 });
 
 app.post('/school/:id/teacher', async (req, res) => {
-  const {id, type, chorarium} = req;
+  const {id, type, chorarium} = req.body;
   if(!db.isTeacherType(type)) {
     throw new Error("Invalid teacher type");
   }
-  const result = db.staffIntoTeacher(id, type, chorarium);
+  const result = await db.staffIntoTeacher(id, type, chorarium);
+  res.json(result);
+});
+
+app.get('/school/:id/teachers', async (req, res) => {
+  const school_id = req.params.id;
+  const result = await db.getAllTeachers(school_id);
   res.json(result);
 });
 
 app.post('/school/:id/admin', async (req, res) => {
   const email = req.body
-  const result = db.staffIntoAdmin(email);
+  const result = await db.staffIntoAdmin(email);
   res.json(result);
 });
 
-app.post('/school/:id/subject', async (req, res) => {
-  const {name, chorarium, semester} = req.body;
-  if(!db.isSemesterType(semester)){
-    throw new Error("Invalid semester");
-  }
-  const result = db.addSubject(name, chorarium, semester, req.params.id);
-  res.json(result);
-});
-
-app.post('/subject/:subject_id/teacher/:teacher_id/grade/:grade_id', async (req, res) => {
-  const result = db.subjectTeacherGrade(req.params.subject_id, req.params.grade_id, req.params.teacher_id);
-  res.json(resullt);
-});
-
-app.get('/subject/grade/:id', async (req, res) => {
-  const result = db.getGradeSubjects(req.params.id);
-  res.json(result.json());
-})
-
-app.get('/subject/teacher/:id', async (req, res) => {
-  const result = db.getTeacherSubjects(req.params.id);
-  res.json(result.json());
-})
-
-app.get('/schedule/teacher/:id', async (req, res) => {
-  const result = db.getTeacherSchedule(req.params.id);
-  res.json(result.json());
-});
-
-app.get('/schedule/grade/:id', async (req, res) => {
-  const result = db.getGradeSchedule(req.params.id);
-  res.json(result.json());
-});
-
-app.get('/school/:id/teachers', async (req, res) => {
-  const result = db.getAllTeachers(req.params.id);
-  res.json(result.json());
-});
-
-app.get('/school/:id/grades', async (req, res) => {
-  const result = db.getAllGrades(req.params.id);
-  res.json(result.json());
-});
-
-app.get('/school/:school_id/student/:student_id', async (req, res) => { 
-  const result = db.getStudent(req.params.student_id, req.params.school_id);
-  res.json(result);
-});
-
-app.get('/staff/:id', async (req, res) => {
-  const result = db.getStaff(req.params.id);
-  res.json(result);
-});
-
-app.get('/teacher/:id', async (req, res) => {
-  const result = db.getTeacher(req.params.id);
+app.get('/terms', async (req, res) => {
+  const result = await db.getTerms();
   res.json(result);
 });
 
 app.get('/subject/:id', async (req, res) => {
-  const result = db.getSubject(req.params.id);
+  const result = await db.getSubject(req.params.id);
+  res.json(result);
+});
+
+app.get('/school/:id/subject', async (req, res) => {
+  const school_id = req.params.id;
+  const result = await db.getSubjects(school_id);
+  res.json(result);
+});
+
+app.post('/school/:id/subject', async (req, res) => {
+  const {name, chorarium, term} = req.body;
+  if(!(await db.isTermType(term))){
+    throw new Error("Invalid term");
+  }
+  const result = await db.addSubject(name, chorarium, term, req.params.id);
+  res.json(result);
+});
+
+app.post('/subject/:subject_id/teacher/:teacher_id/grade/:grade_id', async (req, res) => {
+  const result = await db.insertSubjectTeacherGrade(req.params.subject_id, req.params.grade_id, req.params.teacher_id);
+  res.json(result);
+});
+
+app.get('/subject/grade/:id', async (req, res) => {
+  const result = await db.getGradeSubjects(req.params.id);
+  res.json(result);
+});
+
+app.get('/subject/teacher/:id', async (req, res) => {
+  const result = await db.getTeacherSubjects(req.params.id);
+  res.json(result);
+});
+
+app.get('/schedule/teacher/:id', async (req, res) => {
+  const result = await db.getTeacherSchedule(req.params.id);
+  res.json(result);
+});
+
+app.get('/schedule/grade/:id', async (req, res) => {
+  const result = await db.getGradeSchedule(req.params.id);
+  res.json(result);
+});
+
+app.get('/school/:id/teachers', async (req, res) => {
+  const result = await db.getAllTeachers(req.params.id);
+  res.json(result);
+});
+
+app.get('/school/:id/grades', async (req, res) => {
+  const result = await db.getAllGrades(req.params.id);
+  res.json(result);
+});
+
+app.get('/school/:school_id/student/:student_id', async (req, res) => { 
+  const result = await db.getStudent(req.params.student_id, req.params.school_id);
+  res.json(result);
+});
+
+app.get('/staff/:id', async (req, res) => {
+  const result = await db.getStaff(req.params.id);
+  res.json(result);
+});
+
+app.get('/teacher/:id', async (req, res) => {
+  const result = await db.getTeacher(req.params.id);
+  res.json(result);
+});
+
+app.get('/subject/:id', async (req, res) => {
+  const result = await db.getSubject(req.params.id);
   res.json(result);
 });
 
 app.get('/teacher/:id/subject', async (req, res) => {
-  const result = db.getTeacherSubjects(req.params.id);
+  const result = await db.getTeacherSubjects(req.params.id);
   res.json(result);
 });
 
 app.get('/grade/:id/subject', async (req, res) => {
-  const result = db.getGradeSubjects(req.params.id);
+  const result = await db.getGradeSubjects(req.params.id);
   res.json(result);
 });
 
 app.get('/grade/:id/schedule', async (req, res) => {
-  const result = db.getGradeSchedule(req.params.id);
+  const result = await db.getGradeSchedule(req.params.id);
   res.json(result);
 });
 
 app.get('/teacher/:id/schedule', async (req, res) => {
-  const result = db.getTeacherSchedule(req.params.id);
+  const result = await db.getTeacherSchedule(req.params.id);
   res.json(result);
 });
 
-app.post('/grade/:id/schedule', async (req, res) => {
+app.post('/school/:id/schedule', async (req, res) => {
   const {sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id} = req.body;
-  const result = db.insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id);
+  const result = await db.insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id);
   res.json(result);
-})
+});
 
 app.delete('/school/:id', async (req, res) => {
   db.removeSchool(req.params.id);

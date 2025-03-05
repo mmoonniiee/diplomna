@@ -4,6 +4,7 @@
   "main": "school.js",
   "scripts": {
     "start": "node --env-file=.env server.js",
+    "dev": "node --watch --env-file=.env server.js",
     "db": "node --env-file=.env db-migrate.js"
   },
   "author": "Martina Bikova",

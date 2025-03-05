@@ -1,27 +1,13 @@
-import React from "react";
-import Header from "./components/Header";
-import SubjectEdit from './components/StaffEdit';
-import ScheduleEdit from './components/ScheduleEdit';
-import ScheduleButton from './components/ScheduleButton'
-import { Route, Router, Routes } from 'react-router-dom';
+import SubjectEdit from './components/SubjectEdit.jsx';
+import ScheduleEdit from './components/ScheduleEdit.jsx'
 import Schedule from "./schedule";
 
-
-export default function HomeAT() {
+export default function HomeAT({params}) {
     return (
-        <Router>
-            <div>
-                <Header />
-                <SubjectEdit />
-                <ScheduleEdit />
-                <ScheduleButton />
-
-                <Routes> 
-                    <Route path="/subject/edit" element={<></>} />
-                    <Route path="/schedule/edit" element={<Schedule />} />
-                    <Route path="schedule" element={<></>} />
-                </Routes>
-            </div>
-        </Router>
+        <div>
+            <Link to={`/school/${params.schoolId}/admin/subjects/edit`}><SubjectEdit /></Link>
+            <Link to={`/school/${params.schoolId}/schedule/edit`}><ScheduleEdit /></Link>
+            <Link to="/schedule"><ScheduleButton /></Link>
+        </div>
     )
 }

@@ -1,3 +1,4 @@
+
 import passport from 'passport';
 import { findOrCreate } from './db.js';
 
@@ -8,11 +9,9 @@ passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "http://localhost:5000/google/callback"
   },
-  async function(accessToken, refreshToken, profile, cb) {
-    //TODO: get pfp
+  async function(profile, cb) {
     try {
       const user = await findOrCreate(profile.id, profile.displayName, profile.emails[0].value);
-      console.log('google user:', user);
       return cb(null, user);
     } catch (err) {
       return cb(err, null);
@@ -20,15 +19,3 @@ passport.use(new GoogleStrategy({
   }
 ));
 
-passport.serializeUser(function (user, done) {
-    done(null, user.id);
-});
-
-passport.deserializeUser(async function (_user, done) {
-  try {
-    const user = await getUser(id);
-    done(null, user);
-  } catch (err) {
-    done(err, null);
-  }
-});
