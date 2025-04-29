@@ -43,14 +43,18 @@ app.get('/home', (req, res) => {
   const userRole = decoded.role;
   const schoolId = decoded.schoolId;
 
-  if(userRole === `teacher_admin`) {
-    res.redirect(`http://localhost:5173/school/${schoolId}/home/admin/teacher`);
-  } else if(userRole === `school_admin`) {
-    res.redirect(`http://localhost:5173/school/${schoolId}/home/admin`);
-  } else if(userRole === `teacher` || userRole === `student`) {
-    res.redirect(`http://localhost:5173/school/${schoolId}/home`);
-  } else {
-    res.redirect(`http://localhost:5173/norole`);
+  try {
+    if(userRole === `teacher_admin`) {
+      res.redirect(`http://localhost:5173/school/${schoolId}/home/admin/teacher`);
+    } else if(userRole === `school_admin`) {
+      res.redirect(`http://localhost:5173/school/${schoolId}/home/admin`);
+    } else if(userRole === `teacher` || userRole === `student`) {
+      res.redirect(`http://localhost:5173/school/${schoolId}/home`);
+    } else {
+      res.redirect(`http://localhost:5173`);
+    }
+  } catch {
+    res.redirect(`http://localhost:5173`);
   }
 });
 
