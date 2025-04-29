@@ -29,10 +29,10 @@ app.get('/google/callback',
     failureRedirect: 'http://localhost:5173/fail'
   }), (req, res) => {
     const userPayload = { id: req.user.id, name: req.user.name, role: req.user.role, schoolId: req.user.schoolID};
-    const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '3h'});
+    const token = jwt.sign(userPayload, process.env.SECRET_KEY, {expiresIn: '6h'});
     res.cookie('authToken', token, {
       httpOnly: true,
-      maxAge: 3 * 60 * 60 * 1000
+      maxAge: 6 * 60 * 60 * 1000
     });
     res.redirect('/home');
   }
@@ -149,8 +149,8 @@ app.post('/subject/:subject_id/teacher/:teacher_id/grade/:grade_id', async (req,
   res.json(result);
 });
 
-app.get('/subject/grade/:id', async (req, res) => {
-  const result = await db.getGradeSubjects(req.params.id);
+app.get('/subject/grade/:gradeId', async (req, res) => {
+  const result = await db.getGradeSubjects(req.params.gradeId);
   res.json(result);
 });
 
@@ -159,15 +159,28 @@ app.get('/subject/teacher/:id', async (req, res) => {
   res.json(result);
 });
 
-app.get('/schedule/teacher/:id', async (req, res) => {
-  const result = await db.getTeacherSchedule(req.params.id);
+app.get('/schedule/teacher/:id/term/:term', async (req, res) => {
+  const result = await db.getTeacherSchedule(req.params.id, req.params.term);
   res.json(result);
 });
 
-app.get('/schedule/grade/:id', async (req, res) => {
-  const result = await db.getGradeSchedule(req.params.id);
+app.get('/schedule/grade/:gradeId/term/:term', async (req, res) => {
+  const result = await db.getGradeSchedule(req.params.gradeId, req.params.term);
   res.json(result);
 });
+
+app.get('/schedule', async (req, res) => {
+  const decoded = jwt.decode(req.cookies.authToken);
+  const userID = decoded.id;
+  const userRole = decoded.role;
+
+  if(userRole.startsWith("teacher")) 
+    res.redirect(`/schedule/teacher/${userID}/term/second`);
+  else if(userRole === "student") {
+    const gradeID = await db.getStudentGrade(userID);
+    res.redirect(`/schedule/grade/${gradeID}/term/second`);
+  }
+})
 
 app.get('/school/:id/teachers', async (req, res) => {
   const result = await db.getAllTeachers(req.params.id);
