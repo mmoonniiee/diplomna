@@ -6,8 +6,8 @@ import { route, prefix, layout } from "@react-router/dev/routes";
       route("/home/admin", "HomeAdmin.jsx"),
       route("/home", "HomeStudentTeacher.jsx"),
       route("/admin/term/:term", "./ScheduleTablist.jsx", [
-        route("/grade/:gradeId", "ScheduleEditorGrade.jsx"),
-        route("/teacher/:teacherId", "ScheduleEditorTeacher.jsx")
+        route("grade/:gradeId", "ScheduleEditorGrade.jsx"),
+        route("teacher/:teacherId", "ScheduleEditorTeacher.jsx")
       ]),
       route("/schedule", "SchedulePage.jsx"),
       layout("./components/Sidebar.jsx", [
