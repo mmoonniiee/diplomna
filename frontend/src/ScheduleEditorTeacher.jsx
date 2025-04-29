@@ -17,30 +17,12 @@ export async function clientLoader({ params }) {
   const {data: teacher_subjects} = await axios.get(`http://localhost:5000/subject/teacher/${params.teacher_id}`);
   const {data: teacher_schedule} = await axios.get(`http://localhost:5000/schedule/teacher/${params.teacher_id}`);
 
-  const teacherSchedule = Array.from({ length: 5 }).map(() => 
-    Array.from({ length: 8 }).map(() => null));
-
-  teacherSchedule = teacher_schedule.map(cls => {
-    for(let i = 0; i < 5; i++) {
-      for(let j = 0; i < 8; i++) {
-        if(idFromDay(cls.weekday_taught) === i && cls.class_number === j) {
-          teacherSchedule[i][j] = {...cls.subject_taught, ...cls.week_taught, ...cls.weekday_taught, 
-            ...cls.class_number, ...cls.term, ...cls.subject_name, ...cls.teacher_name}
-        }
-      }
-    }
-  });
-
-  return {teacher_subjects, teacherSchedule};
-}
-
-const checkTeacherSchedule = (sgt_id, start_time, end_time) => {
-
+  return {teacher_subjects, teacher_schedule};
 }
 
 export default function ScheduleEdit({ loaderData }) {
 
-  const { teacher_subjects, teacherSchedule } = loaderData;
+  const { teacher_subjects, teacher_schedule } = loaderData;
 
   const gridRef = useRef(null);
 
@@ -60,27 +42,42 @@ export default function ScheduleEdit({ loaderData }) {
   return (
     <div>
       <div>
-        <div class="schedule">
-          {teacherSchedule.map(cls => {
-            if(cls) {
-              <div className={cls.week_taught === "both" ? 
-              "both-weeks" : cls.week_taught === "odd" ? 
-              "odd-week" : cls.week_taught === "even" ? "even-week" : ""}
-              id={`${cls.class_number}-${idFromDay(cls.weekday_taught)}`}>
-                <p className='schedule-subject'>{cls.subject_name}</p>
-                <p className='schedule-teacher'>{cls.teacher_name}</p>
-              </div>
-            } else {
-                <div></div>
-            }
-          })}
+      <div className='flex justify-center items-center h-screen'>
+          <div className='p-4 grid grid-cols-5 grid-rows-8 gap-4 bg-[rgba(217,217,217,0.4)] max-w-[70vw] rounded-lg'>
+            {Array.from({length : 40}, (_, i) => {
+                const cls = teacher_schedule.filter(obj => 
+                (obj.class_number - 1) * 5 + idFromDay(obj.weekday_taught) === i);
+                
+              return (
+                <div className='bg-[rgba(217,217,217,0.4)] max-w-[20vw] aspect-[3/1] rounded flex items-center overflow-hidden'>
+                    {cls.length > 1 ? (
+                      (() => {
+                        const odd = cls.find(obj => obj.week_taught === 'odd');
+                        const even = cls.find(obj => obj.week_taught === 'even');
+
+                        return (
+                          <div className="flex justify-center items-center grid grid-cols-2 gap-2">
+                            <div className='h-full py-0 px-1 justify-center bg-[rgba(217,217,217,0.4)] rounded'>
+                              <p className='text-white flex items-center pl-[10px] overflow-hidden text-[10px]'>{odd.subject_name}</p>
+                            </div>
+                            <div className='py-0 px-1 bg-[rgba(217,217,217,0.4)] rounded'>
+                              <p className='text-white flex items-center pl-[10px] overflow-hidden text-[10px]'>{even.subject_name}</p>
+                            </div>
+                          </div>
+                        );
+                    })()
+                    ) : <p className='text-white flex items-center pl-[10px] text-[12px]'>{cls[0]?.subject_name}</p> }
+                  </div>
+                )
+              })}
+            </div>
         </div>
         <div>
           <ul>
             {teacher_subjects.map((subject) => (
               <li
               key={subject.id}
-              className="subject"
+              className="bg-[rgba(217,217,217,0.4)] p-6 rounded-xl"
               onDrag={handleDragStart}>
                 <p>{subject.name}</p>
                 <p>{subject.teachername}</p>

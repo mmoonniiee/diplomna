@@ -4,9 +4,11 @@ import SubjectEdit from './components/SubjectEdit';
 
 export default function AdminHome({params}) {
     return (
-        <div>
-            <Link to={`/school/${params.schoolId}/admin/subjects/edit`}><SubjectEdit /></Link>
-            <Link to={`/school/${params.schoolId}/schedule/edit`}><ScheduleEdit /></Link>
+        <div class="flex justify-center items-center h-screen w-screen">
+            <div class="flex gap-5">
+                <Link to={`/school/${params.schoolId}/admin/subjects/edit`}><SubjectEdit /></Link>
+                <Link to={`/school/${params.schoolId}/admin/term/second`}><ScheduleEdit /></Link>
+            </div>
         </div>
     )
 }

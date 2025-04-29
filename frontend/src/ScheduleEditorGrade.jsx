@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
 import axios from 'axios';
+//import {Draggable, Droppable} from ''
+//import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 
 const idFromDay = (day) => {
   switch(day){
@@ -13,34 +15,16 @@ const idFromDay = (day) => {
 }
 
 export async function clientLoader({ params }) {
+  console.log(params);
 
-  const {data: grade_subjects} = await axios.get(`http://localhost:5000/subject/grade/${params.grade_id}`);
-  const {data: grade_schedule} = await axios.get(`http://localhost:5000/schedule/grade/${params.grade_id}`);
+  const {data: grade_subjects} = await axios.get(`http://localhost:5000/subject/grade/${params.gradeId}`);
+  const {data: grade_schedule} = await axios.get(`http://localhost:5000/schedule/grade/${params.gradeId}/term/${params.term}`);
 
-  const gradeSchedule = Array.from({ length: 5 }).map(() => 
-    Array.from({ length: 8 }).map(() => null));
-
-  gradeSchedule = grade_schedule.map(cls => {
-    for(let i = 0; i < 5; i++) {
-      for(let j = 0; i < 8; i++) {
-        if(idFromDay(cls.weekday_taught) === i && cls.class_number === j) {
-          gradeSchedule[i][j] = {...cls.subject_taught, ...cls.week_taught, ...cls.weekday_taught, 
-            ...cls.class_number, ...cls.term, ...cls.subject_name, ...cls.teacher_name}
-        }
-      }
-    }
-  });
-
-  return {grade_subjects, gradeSchedule};
+  return {grade_subjects, grade_schedule};
 }
-
-const checkTeacherSchedule = (sgt_id, start_time, end_time) => {
-
-}
-
 export default function ScheduleEdit({ loaderData }) {
 
-  const { grade_subjects, gradeSchedule } = loaderData;
+  const { grade_subjects, grade_schedule } = loaderData;
 
   const gridRef = useRef(null);
 
@@ -59,38 +43,52 @@ export default function ScheduleEdit({ loaderData }) {
 
   return (
     <div>
-      <div>
-        <div class="schedule">
-          {gradeSchedule.map(cls => {
-            if(cls) {
-              <div className={cls.week_taught === "both" ? 
-              "both-weeks" : cls.week_taught === "odd" ? 
-              "odd-week" : cls.week_taught === "even" ? "even-week" : ""}
-              id={`${cls.class_number}-${idFromDay(cls.weekday_taught)}`}>
-                <p className='schedule-subject'>{cls.subject_name}</p>
-                <p className='schedule-teacher'>{cls.teacher_name}</p>
-              </div>
-            } 
-            else{
-              <div></div>
-            }
-          })}
+        <div className='grid grid-cols-2 p-2 grid-cols-[75%_25%] gap-6 h-full mr-8'>
+        <div className='flex justify-center items-center h-screen'>
+          <div className='p-4 grid grid-cols-5 grid-rows-8 gap-4 bg-[rgba(217,217,217,0.4)] rounded-lg'>
+            {Array.from({length : 40}, (_, i) => {
+                const cls = grade_schedule.filter(obj => 
+                (obj.class_number - 1) * 5 + idFromDay(obj.weekday_taught) === i);
+                
+              return (
+                <div className='bg-[rgba(217,217,217,0.4)] max-w-[20vw] aspect-[3/1] rounded flex items-center overflow-hidden'>
+                    {cls.length > 1 ? (
+                      (() => {
+                        const odd = cls.find(obj => obj.week_taught === 'odd');
+                        const even = cls.find(obj => obj.week_taught === 'even');
+
+                        return (
+                          <div className="flex justify-center items-center grid grid-cols-2 gap-2">
+                            <div className='h-full py-0 px-1 justify-center bg-[rgba(217,217,217,0.4)] rounded'>
+                              <p className='text-white flex items-center pl-[10px] overflow-hidden text-[10px]'>{odd.subject_name}</p>
+                            </div>
+                            <div className='py-0 px-1 bg-[rgba(217,217,217,0.4)] rounded'>
+                              <p className='text-white flex items-center pl-[10px] overflow-hidden text-[10px]'>{even.subject_name}</p>
+                            </div>
+                          </div>
+                        );
+                    })()
+                    ) : <p className='text-white flex items-center pl-[10px] text-[12px]'>{cls[0]?.subject_name}</p> }
+                  </div>
+                )
+              })}
+            </div>
         </div>
-        <div>
-          <ul>
-            {gradeSubjects.map((subject) => (
-              <li
-              key={subject.id}
-              className="subject"
-              onDrag={handleDragStart}>
-                <p>{subject.name}</p>
-                <p>{subject.teachername}</p>
-                <a>{subject.chorarium}</a>
-              </li>
-            ))}
-          </ul>
+          <div className='mt-[15vh] h-[70vh] overflow-auto'>
+            <ul>
+              {grade_subjects.map((subject) => (
+                <li
+                key={subject.id}
+                className="bg-[rgba(217,217,217,0.4)] rounded-xl text-white p-4 mb-4"
+                draggable={true}>
+                  <p>{subject.name}</p>
+                  <p>{subject.teachername}</p>
+                  <a>{subject.chorarium}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-      </div>
     </div>
   )
 }
