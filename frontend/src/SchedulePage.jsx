@@ -41,14 +41,14 @@ export default function SchedulePage({ loaderData }) {
                             <div>
                                 <p className='text-white text-center'>{dayFromId(day)}</p>
                             </div>
-                            <div className='grid grid-rows-4 gap-4'>
+                            <div className='grid grid-rows-4 gap-4 h-full'>
                                 {Array.from({length: 4}, (_, block) => {
                                     return (
-                                        <div className='grid grid-rows-2 gap-2 bg-[rgba(253,253,253,0.2)] rounded-lg p-2'>
+                                        <div className='grid grid-rows-2 gap-2 bg-[rgba(253,253,253,0.2)] max-h-[15vh] rounded-2xl p-2'>
                                             {Array.from({length: 2}, (_, cls) => {
                                                 const index = block * 2 + (cls % 2);
                                                 return (
-                                                    <div key={ index } className='rounded text-white'>
+                                                    <div key={ index } className='text-white'>
                                                         {(() => {
                                                             const classes = schedule.filter(obj => 
                                                                 obj.class_number === (index + 1) && idFromDay(obj.weekday_taught) === day);
@@ -60,12 +60,12 @@ export default function SchedulePage({ loaderData }) {
                                                                     const even = classes.find(obj => obj.week_taught === 'even');
                                                                     
                                                                     return (
-                                                                        <div className='flex justify-center items-center grid grid-cols-2 gap-2'>
-                                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full  rounded'>
-                                                                                <p className='overflow-hidden text-[10px]'>{odd.subject_name}</p>
+                                                                        <div className='flex justify-center items-center grid grid-cols-2 gap-2 px'>
+                                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
+                                                                                <p className='overflow-hidden text-[10px] line-clamp-2'>{odd.subject_name}</p>
                                                                             </div>
-                                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full  rounded'>
-                                                                                <p className='overflow-hidden text-[10px]'>{even.subject_name}</p>
+                                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
+                                                                                <p className='overflow-hidden text-[10px] line-clamp-2'>{even.subject_name}</p>
                                                                             </div>
                                                                         </div>
                                                                     )
@@ -74,23 +74,23 @@ export default function SchedulePage({ loaderData }) {
                                                             classes.length === 1 ? (() => {
                                                                 return classes[0].week_taught === 'odd' ? 
                                                                 <div className='grid grid-cols-2'>
-                                                                    <div className='bg-[rgba(253,253,253,0.2)] h-full w-full rounded'>
-                                                                        <p className='overflow-hidden text-[12px]'>{classes[0]?.subject_name}</p>
+                                                                    <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
+                                                                        <p className='overflow-hidden text-[10px] line-clamp-2'>{classes[0]?.subject_name}</p>
                                                                     </div>
                                                                     <div></div>
                                                                 </div> : 
                                                                 classes[0].week_taught === 'even' ? 
                                                                 <div className='grid grid-cols-2'>
                                                                     <div></div>
-                                                                    <div className='bg-[rgba(253,253,253,0.2)] h-full w-full  rounded'>
-                                                                        <p className='overflow-hidden text-[12px]'>{classes[0]?.subject_name}</p>
+                                                                    <div className='bg-[rgba(253,253,253,0.2)] max-w-[20vw] aspect-[3/2] max-h-[6vh] w-full h-full rounded-2xl p-1'>
+                                                                        <p className='overflow-hidden text-[10px] line-clamp-2'>{classes[0]?.subject_name}</p>
                                                                     </div>
                                                                 </div> :
-                                                                <div className='bg-[rgba(253,253,253,0.2)] h-full w-full rounded'>
-                                                                    <p className='pl-1 overflow-hidden text-[12px]'>{classes[0]?.subject_name}</p>
+                                                                <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] aspect-[3/1] rounded-2xl'>
+                                                                    <p className='pl-2 pt-[2px] overflow-hidden text-[11px] line-clamp-2'>{classes[0]?.subject_name}</p>
                                                                 </div> 
                                                             })() :
-                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full rounded'>
+                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] aspect-[3/1] rounded-2xl p-2'>
                                                             </div>
                                                         })()}
                                                     </div>
