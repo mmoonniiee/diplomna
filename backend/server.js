@@ -53,7 +53,7 @@ app.get('/home', (req, res) => {
     } else {
       res.redirect(`http://localhost:5173`);
     }
-  } catch {
+  } catch(err) {
     res.redirect(`http://localhost:5173`);
   }
 });
