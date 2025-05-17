@@ -60,6 +60,7 @@ export async function createTables() {
       email varchar(64) not null,
       "type" teacher_type not null,
       chorarium int not null check(chorarium < 40),
+      schedule_see boolean default false,
       teacher_school int not null,
       constraint teacher_school foreign key(teacher_school) references School(id)
     )`);
@@ -83,6 +84,7 @@ export async function createTables() {
       first_term shift not null,
       second_term shift not null,
       grade_teacher int not null,
+      schedule_see boolean default false,
       school_grade int not null,
       constraint grade_teacher foreign key(grade_teacher) references Teacher(id),
       constraint school_grade foreign key(school_grade) references School(id)
@@ -148,8 +150,6 @@ export async function createTables() {
       start_time time not null,
       end_time time not null,
       term term not null,
-      teacher_see bool default false,
-      student_see bool default false,
       school_id int not null,
       subject_taught int not null,
       constraint subject foreign key(subject_taught) references SubjectGradeTeacher(id),
@@ -448,20 +448,46 @@ export async function insertSubjectTeacherGrade(subject_id, grade_id, teacher_id
 }
 
 export async function getTeacherSubjects(teacher_id) {
-  const result = await pool.query(`select Subject.id, Subject.name, Subject.chorarium, Subject.term, SGT.id from Subject  
-  left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.teacher_id = $1`, [teacher_id]);
+  const result = await pool.query(`select Subject.id as subject_id, Subject.name, Subject.chorarium, Subject.term, SGT.id as sgt_id
+  from Subject left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.teacher_id = $1`, [teacher_id]);
   return result.rows;
 }
 
 export async function getGradeSubjects(grade_id) {
-  const result = await pool.query(`select Subject.id, Subject.name, Subject.chorarium, Subject.term, SGT.id from Subject  
-  left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.grade_id = $1`, [grade_id]);
+  const result = await pool.query(`select Subject.id as subject_id, Subject.name, Subject.chorarium, Subject.term, SGT.id as sgt_id 
+  from Subject left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.grade_id = $1`, [grade_id]);
+  return result.rows;
+}
+
+export async function gradeShiftFirst(id) {
+  const result = await pool.query(`select first_term from grade where id = $1`, [id]);
+  return result.rows;
+}
+
+export async function gradeShiftSecond(id) {
+  const result = await pool.query(`select second_term from grade where id = $1`, [id]);
   return result.rows;
 }
 
 export async function insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id){
   await pool.query(`insert into Class (subject_taught, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id)
   values ($1, $2, $3, $4, $5, $6, $7, $8)`, [sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id]);
+}
+
+export async function checkTeacher(sgt_id, week_taught, weekday_taught, class_number, term) {
+  const result = await pool.query(`select * from Class left join subjectgradeteacher as SGT on Class.subject_taught = SGT.id
+  where SGT.teacher_id = (select teacher_id from subjectgradeteacher where id = $1) and Class.week_taught = $2 and 
+  Class.weekday_taught = $3 and Class.class_number = $4 and Class.term = $5`, 
+  [sgt_id, week_taught, weekday_taught, class_number, term]);
+  return result.rows;
+}
+
+export async function checkGrade(sgt_id, week_taught, weekday_taught, class_number, term) {
+  const result = await pool.query(`select * from Class left join subjectgradeteacher as SGT on Class.subject_taught = SGT.id
+  where SGT.grade_id = (select grade_id from subjectgradeteacher where id = $1) and Class.week_taught = $2 and 
+  Class.weekday_taught = $3 and Class.class_number = $4 and Class.term = $5`, 
+  [sgt_id, week_taught, weekday_taught, class_number, term]);
+  return result.rows;
 }
 
 export async function getGradeSchedule(grade_id, term) {
@@ -490,4 +516,9 @@ export async function getTeacherSchedule(teacher_id, term) {
   where SGT.teacher_id = $1 and Class.term = $2
   order by weekday_taught, class_number`, [teacher_id, term]);
   return result.rows;
+}
+
+export async function removeClass(sgt_id, week_taught, weekday_taught, class_number, term) {
+  const result = await pool.query(`delete from Class where subject_taught = $1 and week_taught = $2 and
+  weekday_taught = $3 and class_number = $4 and term = $5`, [sgt_id, week_taught, weekday_taught, class_number, term]);
 }

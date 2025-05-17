@@ -40,20 +40,20 @@ app.get('/google/callback',
 
 app.get('/home', (req, res) => { 
   const decoded = jwt.decode(req.cookies.authToken);
-  const userRole = decoded.role;
-  const schoolId = decoded.schoolId;
-
   try {
-    if(userRole === `teacher_admin`) {
-      res.redirect(`http://localhost:5173/school/${schoolId}/home/admin/teacher`);
-    } else if(userRole === `school_admin`) {
-      res.redirect(`http://localhost:5173/school/${schoolId}/home/admin`);
-    } else if(userRole === `teacher` || userRole === `student`) {
-      res.redirect(`http://localhost:5173/school/${schoolId}/home`);
-    } else {
-      res.redirect(`http://localhost:5173`);
-    }
+    var userRole = decoded.role;
+    var schoolId = decoded.schoolId;
   } catch(err) {
+    res.redirect(`http://localhost:5173`);
+  }
+
+  if(userRole === `teacher_admin`) {
+    res.redirect(`http://localhost:5173/school/${schoolId}/home/admin/teacher`);
+  } else if(userRole === `school_admin`) {
+    res.redirect(`http://localhost:5173/school/${schoolId}/home/admin`);
+  } else if(userRole === `teacher` || userRole === `student`) {
+    res.redirect(`http://localhost:5173/school/${schoolId}/home`);
+  } else {
     res.redirect(`http://localhost:5173`);
   }
 });
@@ -201,6 +201,25 @@ app.get('/school/:school_id/student/:student_id', async (req, res) => {
   res.json(result);
 });
 
+app.get(`/grade/:id/term/:term/shift`, async (req, res) => {
+  var result = {};
+  req.params.term === 'first' ? result = await db.gradeShiftFirst(req.params.id) : 
+  result = await db.gradeShiftSecond(req.params.id);
+  res.json(result);
+});
+
+app.get('/teacher/check/:sgt_id', async (req, res) => {
+  const {week_taught, weekday_taught, class_number, term} = req.body;
+  const result = await db.checkTeacher(req.params.sgt_id, week_taught, weekday_taught, class_number, term);
+  res.json(result.length === 0);
+});
+
+app.get('/grade/check/:sgt_id', async (req, res) => {
+  const {week_taught, weekday_taught, class_number, term} = req.body;
+  const result = await db.checkGrade(req.params.sgt_id, week_taught, weekday_taught, class_number, term);
+  res.json(result.length === 0);
+});
+
 app.get('/staff/:id', async (req, res) => {
   const result = await db.getStaff(req.params.id);
   res.json(result);
@@ -236,9 +255,9 @@ app.get('/teacher/:id/schedule', async (req, res) => {
   res.json(result);
 });
 
-app.post('/school/:id/schedule', async (req, res) => {
-  const {sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id} = req.body;
-  const result = await db.insertIntoSchedule(sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, school_id);
+app.post('/school/:school_id/schedule/:sgt_id', async (req, res) => {
+  const {week_taught, weekday_taught, class_number, term, start_time, end_time} = req.body.params;
+  const result = await db.insertIntoSchedule(req.params.sgt_id, week_taught, weekday_taught, class_number, start_time, end_time, term, req.params.school_id);
   res.json(result);
 });
 
@@ -253,12 +272,18 @@ app.delete('/staff/:id', async (req, res) => {
 });
 
 app.delete('/student/:id', async (req, res) => {
-  db.removeStudent(req.params.id).
+  db.removeStudent(req.params.id);
   res.send(200);
 });
 
 app.delete('/subject/:id', async (req, res) => {
   db.removeSubject(req.params.id);
+  res.send(200);
+});
+
+app.delete(`/class/:sgt_id`, async(req, res) => {
+  const {week_taught, weekday_taught, class_number, term} = req.body;
+  db.removeClass(req.params.sgt_id, week_taught, weekday_taught, class_number, term);
   res.send(200);
 });
 
