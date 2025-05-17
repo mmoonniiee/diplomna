@@ -6,7 +6,7 @@ export default function AdminHome({params}) {
     return (
         <div class="flex justify-center items-center h-screen w-screen">
             <div class="flex gap-5">
-                <Link to={`/school/${params.schoolId}/admin/subjects/edit`}><SubjectEdit /></Link>
+                <Link to={`/school/${params.schoolId}/admin/subjects/add`}><SubjectEdit /></Link>
                 <Link to={`/school/${params.schoolId}/admin/term/second`}><ScheduleEdit /></Link>
             </div>
         </div>

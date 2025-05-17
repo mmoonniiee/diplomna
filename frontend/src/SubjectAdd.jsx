@@ -16,20 +16,28 @@ export default function SubjectAdd({loaderData}) {
   const terms = loaderData.data;
   return(
     <Form method="POST">
-      <h1>Добавяне на предмет</h1>
-      <div>
-        <label>Име на предмета</label>
-        <input type="text" name="name"/>
+      <div className="flex flex-col items-center space-y-10">
+        <h1 className="text-white text-[24px] font-bold">Добавяне на предмет</h1>
+        <div className="flex flex-col">
+          <label>Име на предмета</label>
+          <input type="text" name="name" className="rounded-full bg-[rgba(253,253,253,0.2)] text-white p-2"/>
+        </div>
+        <div className="flex flex-row space-x-10">
+          <div className="flex flex-col">
+            <label>Срок</label>
+            <select name="term" className="rounded-full bg-[rgba(253,253,253,0.2)] text-white p-2">
+              {terms.map(term => 
+                <option value={term}>{term}</option>
+              )}
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label>Хорариум</label>
+            <input type="number" name="chorarium" className="rounded-full bg-[rgba(253,253,253,0.2)] text-white p-2"/>
+          </div>
+        </div>
+        <button className="bg-[rgba(238,108,77,1)] text-white p-2 rounded-lg">Добавете</button>
       </div>
-      <div>
-        <select name="term">
-          {terms.map(term => 
-            <option value={term}>{term}</option>
-          )}
-        </select>
-        <input type="number" name="chorarium"/>
-      </div>
-      <button>Добавете</button>
     </Form>
   )
 }
