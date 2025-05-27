@@ -7,9 +7,10 @@ import { useState } from 'react';
 
 export async function clientLoader({ params }) {
   const {data: grade_subjects} = await axios.get(`http://localhost:5000/subject/grade/${params.gradeId}`);
-  const {data: grade_schedule} = await axios.get(`http://localhost:5000/schedule/grade/${params.gradeId}/term/${params.term}`);
+  const {data: grade_schedule} = await axios.get(`http://localhost:5000/schedule/edit/grade/${params.gradeId}/term/${params.term}`);
+  const {data: schedule_see} = await axios.get(`http://localhost:5000/grade/${params.gradeId}/schedulesee`);
 
-  return {grade_subjects, grade_schedule};
+  return {grade_subjects, grade_schedule, schedule_see};
 }
 
 const idFromDay = (day) => {
@@ -239,29 +240,35 @@ async function handleDragEnd(event, params) {
 
   if(!g_check) {
     if(split[5] === 'block'){
-      const result1 = await axios.delete(`http://localhost:5000/class/${active.id}`, { params: first_params });
-      const result2 = await axios.delete(`http://localhost:5000/class/${active.id}`, { params: second_params });
+      await axios.delete(`http://localhost:5000/class/${active.id}`, { params: first_params });
+      await axios.delete(`http://localhost:5000/class/${active.id}`, { params: second_params });
     } else {
-      const result = await axios.delete(`http://localhost:5000/class/${active.id}`, { params: cls_params });
+      await axios.delete(`http://localhost:5000/class/${active.id}`, { params: cls_params });
     }
   }
 
   if(split[5] === 'block'){
-    const result1 = await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: first_params });
-    const result2 = await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: second_params });
+    await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: first_params });
+    await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: second_params });
   } else {
-    const result = await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: cls_params });
+    await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: cls_params });
   }
 }
 
 export default function ScheduleEdit({ loaderData, params }) {
+  const { grade_subjects, grade_schedule, schedule_see } = loaderData;
+
   const [activeName, setActiveName] = useState(null);
+  const [visibility, setVisibility] = useState(schedule_see);
   const navigate = useNavigate();
 
-  const { grade_subjects, grade_schedule } = loaderData;
+  const handleChange = async () => {
+    setVisibility(!visibility);
+    await axios.post(`http://localhost:5000/grade/${params.gradeId}/visibility/${!visibility}`);
+  }
 
   return (
-    <div>
+    <div className='h-full w-full'>
       <DndContext
       collisionDetection={pointerWithin}
       onDragStart={event => { 
@@ -271,13 +278,12 @@ export default function ScheduleEdit({ loaderData, params }) {
           await handleDragEnd(event, params);
           setActiveName(null);
           navigate('.');}}>
-            {/*buton za visibility*/}
-          <div className='grid grid-cols-2 p-2 grid-cols-[75%_25%] gap-6 h-full mr-8'>
-          <div className='flex justify-center items-center h-screen'>
+        <div className='grid p-2 grid-cols-[75%_25%] gap-6 h-full mr-8'>
+          <div className='flex justify-center items-center h-full'>
             <div className='p-4 grid grid-cols-5 gap-4 bg-[rgba(253,253,253,0.2)] max-w-[70vw] max-h-[85vh] rounded-xl'>
                 {Array.from({length: 5}, (_, day) => {
                     return (
-                      <div className='grid grid-rows-2 gap-2 grid-rows-[7%_93%]'>
+                      <div className='grid gap-2 grid-rows-[7%_93%]'>
                         <div>
                             <p className='text-white text-center'>{dayFromIdBg(day)}</p>
                         </div>
@@ -301,7 +307,7 @@ export default function ScheduleEdit({ loaderData, params }) {
                                                       const even = classes.find(obj => obj.week_taught === 'even');
                                                       
                                                       return (
-                                                        <div className='flex justify-center items-center grid grid-cols-2 gap-2 px'>
+                                                        <div className='justify-center items-center grid grid-cols-2 gap-2 px'>
                                                             <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
                                                               <p className='overflow-hidden text-[10px] line-clamp-2'>{odd.subject_name}</p>
                                                             </div>
@@ -342,9 +348,26 @@ export default function ScheduleEdit({ loaderData, params }) {
                       </div>
                     )
                 })}
-              </div>
+            </div>
           </div>
-            <div className='mt-[15vh] h-[70vh] overflow-auto'>
+          <div className='grid grid-rows-[20%_80%] justify-center items-center'>
+            <div className="flex flex-col space-y-4 mt-10 items-center justify-center">
+              <p className='text-white text-center'>Има ли класът достъп до програмата:</p>
+              <label className="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" className="sr-only" checked={visibility} onClick={handleChange}/>
+                <div
+                  className={`w-full h-full rounded-full transition-colors duration-300 ${
+                    visibility ? 'bg-[rgba(238,108,77,1)]' : 'bg-[rgba(217,217,217,0.4)]'
+                  }`}
+                ></div>
+                <div
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                    visibility ? 'translate-x-6' : ''
+                  }`}
+                ></div>
+              </label>
+            </div>
+            <div className='h-[60vh] overflow-auto'>
               <ul>
                 {grade_subjects.map((subject) => (
                   <DraggableSubject
@@ -356,10 +379,11 @@ export default function ScheduleEdit({ loaderData, params }) {
                 ))}
               </ul>
             </div>
+          </div>
             <DragOverlay>
               {activeName ? <SubjectOverlay name={activeName}/> : <div></div>}
             </DragOverlay>
-          </div>
+        </div>
       </DndContext>
     </div>
   )

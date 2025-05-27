@@ -167,6 +167,11 @@ export async function getSchoolTypes() {
   return result.rows.map((row) => row.enumlabel);
 }
 
+export async function getSchoolName(id) {
+  const result = await pool.query(`select name from school where id = $1`, [id]);
+  return result.rows[0];
+}
+
 export async function isSchoolType(value) {
   const result = await pool.query(`select exists (select 1 from school_type 
     where typname = 'school_type' 
@@ -487,6 +492,26 @@ export async function checkGrade(sgt_id, week_taught, weekday_taught, class_numb
   where SGT.grade_id = (select grade_id from subjectgradeteacher where id = $1) and Class.week_taught = $2 and 
   Class.weekday_taught = $3 and Class.class_number = $4 and Class.term = $5`, 
   [sgt_id, week_taught, weekday_taught, class_number, term]);
+  return result.rows;
+}
+
+export async function teacherScheduleSee(teacher_id) {
+  const result = await pool.query(`select schedule_see from teacher where id = $1`, [teacher_id]);
+  return result.rows[0].schedule_see;
+}
+
+export async function setTeacherScheduleSee(teacher_id, visibility) {
+  const result = await pool.query(`update teacher set schedule_see = $1 where id = $2`, [visibility, teacher_id]);
+  return result.rows;
+}
+
+export async function gradeScheduleSee(grade_id) {
+  const result = await pool.query(`select schedule_see from grade where id = $1`, [grade_id]);
+  return result.rows[0].schedule_see;
+}
+
+export async function setGradeScheduleSee(grade_id, visibility) {
+  const result = await pool.query(`update grade set schedule_see = $1 where id = $2`, [visibility, grade_id]);
   return result.rows;
 }
 

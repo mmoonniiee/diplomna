@@ -10,7 +10,7 @@ export default function SidebarSubject({ loaderData, params }) {
   const subjects = loaderData.data;
 
   return (
-    <div className="grid grid-cols-2 grid-cols-[30%_70%] w-full">
+    <div className="grid grid-cols-[30%_70%] h-full w-full justify-center items-center">
       <div className="max-h-[70vh] overflow-auto flex flex-col items-center">
         <Link to={`/school/${params.schoolId}/admin/subjects/add`}> 
           <button className="bg-[rgba(238,108,77,1)] text-white p-2 rounded-lg mb-4 justify-center">Добавяне на предмет</button>

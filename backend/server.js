@@ -40,12 +40,8 @@ app.get('/google/callback',
 
 app.get('/home', (req, res) => { 
   const decoded = jwt.decode(req.cookies.authToken);
-  try {
-    var userRole = decoded.role;
-    var schoolId = decoded.schoolId;
-  } catch(err) {
-    res.redirect(`http://localhost:5173`);
-  }
+  const userRole = decoded.role;
+  const schoolId = decoded.schoolId;
 
   if(userRole === `teacher_admin`) {
     res.redirect(`http://localhost:5173/school/${schoolId}/home/admin/teacher`);
@@ -69,6 +65,11 @@ app.post('/school', async (req, res) => {
     throw new Error("Invalid school type");
   }
   const result = await db.addSchool(name, domain, type);
+  res.json(result);
+});
+
+app.get(`/school/:id/name`, async (req, res) => {
+  const result = await db.getSchoolName(req.params.id);
   res.json(result);
 });
 
@@ -164,13 +165,51 @@ app.get('/subject/teacher/:id', async (req, res) => {
 });
 
 app.get('/schedule/teacher/:id/term/:term', async (req, res) => {
+  const visible = await db.teacherScheduleSee(req.params.id);
+  if(!visible)
+    res.json(visible);
+  else {
+    const result = await db.getTeacherSchedule(req.params.id, req.params.term);
+    res.json(result);
+}});
+
+app.get('/schedule/grade/:gradeId/term/:term', async (req, res) => {
+  const visible = await db.gradeScheduleSee(req.params.id);
+  if(!visible)
+    res.json(visible);
+  else {
+    const result = await db.getGradeSchedule(req.params.gradeId, req.params.term);
+    res.json(result);
+}});
+
+app.get(`/schedule/edit/grade/:gradeId/term/:term`, async (req, res) => {
+  const result = await db.getGradeSchedule(req.params.gradeId, req.params.term);
+  res.json(result);
+});
+
+app.get(`/schedule/edit/teacher/:id/term/:term`, async (req, res) => {
   const result = await db.getTeacherSchedule(req.params.id, req.params.term);
   res.json(result);
 });
 
-app.get('/schedule/grade/:gradeId/term/:term', async (req, res) => {
-  const result = await db.getGradeSchedule(req.params.gradeId, req.params.term);
+app.get(`/grade/:id/schedulesee`, async (req, res) => {
+  const result = await db.gradeScheduleSee(req.params.id);
   res.json(result);
+});
+
+app.post(`/grade/:id/visibility/:see`, async (req, res) => {
+  await db.setGradeScheduleSee(req.params.id, req.params.see);
+  res.sendStatus(200);
+});
+
+app.get(`/teacher/:id/schedulesee`, async (req, res) => {
+  const result = await db.teacherScheduleSee(req.params.id);
+  res.json(result);
+});
+
+app.post(`/teacher/:id/visibility/:see`, async (req, res) => {
+  await db.setTeacherScheduleSee(req.params.id, req.params.see);
+  res.sendStatus(200);
 });
 
 app.get('/schedule', async (req, res) => {
@@ -184,7 +223,7 @@ app.get('/schedule', async (req, res) => {
     const gradeID = await db.getStudentGrade(userID);
     res.redirect(`/schedule/grade/${gradeID}/term/second`);
   }
-})
+});
 
 app.get('/school/:id/teachers', async (req, res) => {
   const result = await db.getAllTeachers(req.params.id);

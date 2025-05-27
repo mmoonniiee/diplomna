@@ -7,9 +7,10 @@ import { useState } from 'react';
 
 export async function clientLoader({ params }) {
   const {data: teacher_subjects} = await axios.get(`http://localhost:5000/subject/teacher/${params.teacherId}`);
-  const {data: teacher_schedule} = await axios.get(`http://localhost:5000/schedule/teacher/${params.teacherId}/term/${params.term}`);
+  const {data: teacher_schedule} = await axios.get(`http://localhost:5000/schedule/edit/teacher/${params.teacherId}/term/${params.term}`);
+  const {data: schedule_see} = await axios.get(`http://localhost:5000/teacher/${params.teacherId}/schedulesee`);
 
-  return {teacher_subjects, teacher_schedule};
+  return {teacher_subjects, teacher_schedule, schedule_see};
 }
 
 const idFromDay = (day) => {
@@ -184,8 +185,7 @@ async function handleDragEnd(event, params) {
 
   const split = over.id.split(`-`);
 
-  //TODO
-  //const {data: teacher_shift} = await axios.get(`http://localhost:5000/teacher/${params.teacherId}/term/${params.term}/shift`);
+  const {data: teacher_shift} = await axios.get(`http://localhost:5000/teacher/${params.teacherId}/term/${params.term}/shift`);
 
   if(split[1] === 'both' && (active.chorarium - active.subject_chorarium < 2)) {
     toast(<div className='bg-[rgba(4,15,33,1)]'><p className='text-[rgba(238,108,77,1)]'>Недостатъчно хорариум за предмета!</p></div>);
@@ -196,8 +196,8 @@ async function handleDragEnd(event, params) {
     week_taught: split[1],
     weekday_taught: split[3],
     class_number: split[6] * 2 - 1,
-    start_time: grade_shift === 'first' ? startTimeFirst(split[6] * 2 - 1) : startTimeSecond(split[6] * 2 - 1),
-    end_time: grade_shift === 'first' ? endTimeFirst(split[6] * 2 - 1) : endTimeSecond(split[6] * 2 - 1),
+    start_time: teacher_shift === 'first' ? startTimeFirst(split[6] * 2 - 1) : startTimeSecond(split[6] * 2 - 1),
+    end_time: teacher_shift === 'first' ? endTimeFirst(split[6] * 2 - 1) : endTimeSecond(split[6] * 2 - 1),
     term: params.term
   }
   
@@ -205,8 +205,8 @@ async function handleDragEnd(event, params) {
     week_taught: split[1],
     weekday_taught: split[3],
     class_number: split[6] * 2,
-    start_time: grade_shift === 'first' ? startTimeFirst(split[6] * 2) : startTimeSecond(split[6] * 2),
-    end_time: grade_shift === 'first' ? endTimeFirst(split[6] * 2) : endTimeSecond(split[6] * 2),
+    start_time: teacher_shift === 'first' ? startTimeFirst(split[6] * 2) : startTimeSecond(split[6] * 2),
+    end_time: teacher_shift === 'first' ? endTimeFirst(split[6] * 2) : endTimeSecond(split[6] * 2),
     term: params.term,
   }
 
@@ -214,8 +214,8 @@ async function handleDragEnd(event, params) {
     week_taught: split[1],
     weekday_taught: split[3],
     class_number: split[6],
-    start_time: grade_shift === 'first' ? startTimeFirst(+split[6]) : startTimeSecond(+split[6]),
-    end_time: grade_shift === 'first' ? endTimeFirst(+split[6]) : endTimeSecond(+split[6]),
+    start_time: teacher_shift === 'first' ? startTimeFirst(+split[6]) : startTimeSecond(+split[6]),
+    end_time: teacher_shift === 'first' ? endTimeFirst(+split[6]) : endTimeSecond(+split[6]),
     term: params.term,
   }
 
@@ -240,29 +240,35 @@ async function handleDragEnd(event, params) {
 
   if(!g_check) {
     if(split[5] === 'block'){
-      const result1 = await axios.delete(`http://localhost:5000/class/${active.id}`, { params: first_params });
-      const result2 = await axios.delete(`http://localhost:5000/class/${active.id}`, { params: second_params });
+      await axios.delete(`http://localhost:5000/class/${active.id}`, { params: first_params });
+      await axios.delete(`http://localhost:5000/class/${active.id}`, { params: second_params });
     } else {
-      const result = await axios.delete(`http://localhost:5000/class/${active.id}`, { params: cls_params });
+      await axios.delete(`http://localhost:5000/class/${active.id}`, { params: cls_params });
     }
   }
 
   if(split[5] === 'block'){
-    const result1 = await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: first_params });
-    const result2 = await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: second_params });
+    await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: first_params });
+    await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: second_params });
   } else {
-    const result = await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: cls_params });
+    await axios.post(`http://localhost:5000/school/${params.schoolId}/schedule/${active.id}`, { params: cls_params });
   }
 }
 
 export default function ScheduleEdit({ loaderData, params }) {
+  const { teacher_subjects, teacher_schedule, schedule_see } = loaderData;
+
   const [activeName, setActiveName] = useState(null);
+  const [visibility, setVisibility] = useState(schedule_see);
   const navigate = useNavigate();
 
-  const { teacher_subjects, teacher_schedule } = loaderData;
+  const handleChange = async () => {
+    setVisibility(!visibility);
+    await axios.post(`http://localhost:5000/teacher/${params.teacherId}/visibility/${!visibility}`);
+  }
 
   return (
-    <div>
+    <div className='h-full w-full'>
       <DndContext
       collisionDetection={pointerWithin}
       onDragStart={event => { 
@@ -272,93 +278,111 @@ export default function ScheduleEdit({ loaderData, params }) {
           await handleDragEnd(event, params);
           setActiveName(null);
           navigate('.');}}>
-        <div className='grid grid-cols-2 p-2 grid-cols-[75%_25%] gap-6 h-full mr-8'>
-        <div className='flex justify-center items-center h-screen'>
-          <div className='p-4 grid grid-cols-5 gap-4 bg-[rgba(253,253,253,0.2)] max-w-[70vw] max-h-[85vh] rounded-xl'>
-              {Array.from({length: 5}, (_, day) => {
-                  return (
-                    <div className='grid grid-rows-2 gap-2 grid-rows-[7%_93%]'>
-                      <div>
-                          <p className='text-white text-center'>{dayFromIdBg(day)}</p>
-                      </div>
-                      <div className='grid grid-rows-4 gap-4 h-full'>
-                          {Array.from({length: 4}, (_, block) => {
-                              return (
-                                <div className='relative grid grid-rows-2 gap-2 bg-[rgba(253,253,253,0.2)] max-h-[15vh] rounded-2xl p-2'>
-                                    <DropZones block_id={block + 1} day_id={day}/>
-                                    {Array.from({length: 2}, (_, cls) => {
-                                        const index = block * 2 + (cls % 2);
-                                        return (
-                                          <div key={ index } className='text-white'>
-                                              {(() => {
-                                                const classes = teacher_schedule.filter(obj => 
-                                                  obj.class_number === (index + 1) && idFromDay(obj.weekday_taught) === day);
-                                                
-                                                return classes.length > 1 ? 
-                                                <div>
-                                                  {(() => {
-                                                    const odd = classes.find(obj => obj.week_taught === 'odd');
-                                                    const even = classes.find(obj => obj.week_taught === 'even');
-                                                    
-                                                    return (
-                                                      <div className='flex justify-center items-center grid grid-cols-2 gap-2 px'>
-                                                          <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
-                                                            <p className='overflow-hidden text-[10px] line-clamp-2'>{odd.subject_name}</p>
-                                                          </div>
-                                                          <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
-                                                            <p className='overflow-hidden text-[10px] line-clamp-2'>{even.subject_name}</p>
-                                                          </div>
-                                                        </div>
-                                                      )
-                                                  })()}
-                                                </div> : 
-                                                classes.length === 1 ? (() => {
-                                                  return classes[0].week_taught === 'odd' ? 
-                                                  <div className='grid grid-cols-2'>
-                                                    <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
-                                                      <p className='overflow-hidden text-[10px] line-clamp-2'>{classes[0]?.subject_name}</p>
-                                                    </div>
-                                                    <div></div>
-                                                  </div> : 
-                                                  classes[0].week_taught === 'even' ? 
-                                                  <div className='grid grid-cols-2'>
-                                                    <div></div>
-                                                    <div className='bg-[rgba(253,253,253,0.2)] max-w-[20vw] aspect-[3/2] max-h-[6vh] w-full h-full rounded-2xl p-1'>
-                                                      <p className='overflow-hidden text-[10px] line-clamp-2'>{classes[0]?.subject_name}</p>
-                                                    </div>
-                                                  </div> :
-                                                  <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] aspect-[3/1] rounded-2xl'>
-                                                    <p className='pl-2 pt-[2px] overflow-hidden text-[11px] line-clamp-2'>{classes[0]?.subject_name}</p>
-                                                  </div> 
-                                                })() :
-                                                <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] aspect-[3/1] rounded-2xl p-2'>
-                                                </div>
-                                              })()}
-                                          </div>
-                                      )})}
-                                </div>
-                            )})}
+        <div className='grid p-2 grid-cols-[75%_25%] gap-6 h-full mr-8'>
+          <div className='flex justify-center items-center h-full'>
+            <div className='p-4 grid grid-cols-5 gap-4 bg-[rgba(253,253,253,0.2)] max-w-[70vw] max-h-[85vh] rounded-xl'>
+                {Array.from({length: 5}, (_, day) => {
+                    return (
+                      <div className='grid gap-2 grid-rows-[7%_93%]'>
+                        <div>
+                            <p className='text-white text-center'>{dayFromIdBg(day)}</p>
                         </div>
-                    </div>
-                  )
-              })}
+                        <div className='grid grid-rows-4 gap-4 h-full'>
+                            {Array.from({length: 4}, (_, block) => {
+                                return (
+                                  <div className='relative grid grid-rows-2 gap-2 bg-[rgba(253,253,253,0.2)] max-h-[15vh] rounded-2xl p-2'>
+                                      <DropZones block_id={block + 1} day_id={day}/>
+                                      {Array.from({length: 2}, (_, cls) => {
+                                          const index = block * 2 + (cls % 2);
+                                          return (
+                                            <div key={ index } className='text-white'>
+                                                {(() => {
+                                                  const classes = teacher_schedule.filter(obj => 
+                                                    obj.class_number === (index + 1) && idFromDay(obj.weekday_taught) === day);
+                                                  
+                                                  return classes.length > 1 ? 
+                                                  <div>
+                                                    {(() => {
+                                                      const odd = classes.find(obj => obj.week_taught === 'odd');
+                                                      const even = classes.find(obj => obj.week_taught === 'even');
+                                                      
+                                                      return (
+                                                        <div className='justify-center items-center grid grid-cols-2 gap-2 px'>
+                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
+                                                              <p className='overflow-hidden text-[10px] line-clamp-2'>{odd.subject_name}</p>
+                                                            </div>
+                                                            <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
+                                                              <p className='overflow-hidden text-[10px] line-clamp-2'>{even.subject_name}</p>
+                                                            </div>
+                                                          </div>
+                                                        )
+                                                    })()}
+                                                  </div> : 
+                                                  classes.length === 1 ? (() => {
+                                                    return classes[0].week_taught === 'odd' ? 
+                                                    <div className='grid grid-cols-2'>
+                                                      <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] max-h-[6vh] aspect-[3/2] rounded-2xl p-1'>
+                                                        <p className='overflow-hidden text-[10px] line-clamp-2'>{classes[0]?.subject_name}</p>
+                                                      </div>
+                                                      <div></div>
+                                                    </div> : 
+                                                    classes[0].week_taught === 'even' ? 
+                                                    <div className='grid grid-cols-2'>
+                                                      <div></div>
+                                                      <div className='bg-[rgba(253,253,253,0.2)] max-w-[20vw] aspect-[3/2] max-h-[6vh] w-full h-full rounded-2xl p-1'>
+                                                        <p className='overflow-hidden text-[10px] line-clamp-2'>{classes[0]?.subject_name}</p>
+                                                      </div>
+                                                    </div> :
+                                                    <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] aspect-[3/1] rounded-2xl'>
+                                                      <p className='pl-2 pt-[2px] overflow-hidden text-[11px] line-clamp-2'>{classes[0]?.subject_name}</p>
+                                                    </div> 
+                                                  })() :
+                                                  <div className='bg-[rgba(253,253,253,0.2)] h-full w-full max-w-[20vw] aspect-[3/1] rounded-2xl p-2'>
+                                                  </div>
+                                                })()}
+                                            </div>
+                                        )})}
+                                  </div>
+                              )})}
+                          </div>
+                      </div>
+                    )
+                })}
             </div>
-        </div>
-          <div className='mt-[15vh] h-[70vh] overflow-auto'>
-            <ul>
-              {teacher_subjects.map((subject) => (
-                <DraggableSubject
-                  key={subject.subject_id}
-                  id={subject.sgt_id}
-                  name={subject.name}
-                  chorarium={subject.chorarium}
-                />
-              ))}
-            </ul>
           </div>
-          <DragOverlay>
-            {activeName ? <SubjectOverlay name={activeName}/> : <div></div>}
-          </DragOverlay>
+          <div className='grid grid-rows-[20%_80%] justify-center items-center'>
+            <div className="flex flex-col space-y-4 mt-10 items-center justify-center">
+              <p className='text-white text-center'>Има ли учителят достъп до програмата:</p>
+              <label className="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" className="sr-only" checked={visibility} onClick={handleChange}/>
+                <div
+                  className={`w-full h-full rounded-full transition-colors duration-300 ${
+                    visibility ? 'bg-[rgba(238,108,77,1)]' : 'bg-[rgba(217,217,217,0.4)]'
+                  }`}
+                ></div>
+                <div
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                    visibility ? 'translate-x-6' : ''
+                  }`}
+                ></div>
+              </label>
+            </div>
+            <div className='h-[60vh] overflow-auto'>
+              <ul>
+                {teacher_subjects.map((subject) => (
+                  <DraggableSubject
+                    key={subject.subject_id}
+                    id={subject.sgt_id}
+                    name={subject.name}
+                    chorarium={subject.chorarium}
+                  />
+                ))}
+              </ul>
+            </div>
+          </div>
+            <DragOverlay>
+              {activeName ? <SubjectOverlay name={activeName}/> : <div></div>}
+            </DragOverlay>
         </div>
       </DndContext>
     </div>

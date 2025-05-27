@@ -16,11 +16,11 @@ export async function clientAction({request, params}) {
   const result = await axios.post(`http://localhost:5000/subject/${params.subjectId}/teacher/${body.teacher_id}/grade/${body.grade_id}`, body);
 }
 
-export default function SubjectAdd({loaderData, params}) {
+export default function SubjectAdd({loaderData}) {
   const {subject, grades, teachers } = loaderData;
 
   return(
-    <Form method="POST">
+    <Form method="POST" className="flex h-full justify-center items-center">
       <div className="flex flex-col items-center space-y-10">
         <h1 className="text-white text-[24px] font-bold">Редактиране на {subject.name}</h1>
         <div className="flex flex-row space-x-10">
