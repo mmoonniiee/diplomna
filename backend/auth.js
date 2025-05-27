@@ -9,12 +9,12 @@ passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "http://localhost:5000/google/callback"
   },
-  async function(profile, cb) {
+  async function(accessToken, refreshToken, profile, done) {
     try {
       const user = await findOrCreate(profile.id, profile.displayName, profile.emails[0].value);
-      return cb(null, user);
+      return done(null, user);
     } catch (err) {
-      return cb(err, null);
+      return done(err, null);
     }
   }
 ));

@@ -13,7 +13,7 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
           <Meta />
           <Links />
         </head>
-        <body>
+        <body className="bg-[#1D2F4D] h-full w-full m-0">
           {children}
           <ScrollRestoration />
           <Scripts />
