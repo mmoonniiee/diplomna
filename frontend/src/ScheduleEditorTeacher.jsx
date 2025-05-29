@@ -101,7 +101,7 @@ const endTimeSecond = (num) =>{
   }
 }
 
-function DraggableSubject({ id, name, chorarium }) {
+function DraggableSubject({ id, name, chorarium, subgroup }) {
   const { teacher_schedule } = useLoaderData();
 
   const classes_both = teacher_schedule.filter(cls => cls.subject_taught === id && cls.week_taught === 'both');
@@ -129,6 +129,7 @@ function DraggableSubject({ id, name, chorarium }) {
     >
       <p>{name}</p>
       <p>{subject_chorarium}/{chorarium}</p>
+      <p>{subgroup}</p>
     </li>
   );
 }
@@ -375,6 +376,7 @@ export default function ScheduleEdit({ loaderData, params }) {
                     id={subject.sgt_id}
                     name={subject.name}
                     chorarium={subject.chorarium}
+                    subgroup={subject.subgroup}
                   />
                 ))}
               </ul>

@@ -101,7 +101,7 @@ const endTimeSecond = (num) =>{
   }
 }
 
-function DraggableSubject({ id, name, chorarium }) {
+function DraggableSubject({ id, name, chorarium, teacher }) {
   const { grade_schedule } = useLoaderData();
 
   const classes_both = grade_schedule.filter(cls => cls.subject_taught === id && cls.week_taught === 'both');
@@ -129,6 +129,7 @@ function DraggableSubject({ id, name, chorarium }) {
     >
       <p>{name}</p>
       <p>{subject_chorarium}/{chorarium}</p>
+      <p>{teacher}</p>
     </li>
   );
 }
@@ -187,7 +188,7 @@ async function handleDragEnd(event, params) {
 
   const {data: grade_shift} = await axios.get(`http://localhost:5000/grade/${params.gradeId}/term/${params.term}/shift`);
 
-  if(split[1] === 'both' && (active.chorarium - active.subject_chorarium < 2)) {
+  if((split[1] === 'both' && split[5] === 'block') && (active.data.current.chorarium - active.data.current.subject_chorarium < 2)) {
     toast(<div className='bg-[rgba(4,15,33,1)]'><p className='text-[rgba(238,108,77,1)]'>Недостатъчно хорариум за предмета!</p></div>);
     return;
   }
@@ -233,12 +234,12 @@ async function handleDragEnd(event, params) {
     var {data: g_check} = await axios.get(`http://localhost:5000/grade/check/${active.id}`, { params: cls_params });
   }
 
-  if(!t_check) {
+  if(t_check) {
     toast(<div className='bg-[rgba(4,15,33,1)]'><p className='text-[rgba(238,108,77,1)]'>Преподавателят вече има учебен час по даденото време!</p></div>);
     return;
   }
 
-  if(!g_check) {
+  if(g_check) {
     if(split[5] === 'block'){
       await axios.delete(`http://localhost:5000/class/${active.id}`, { params: first_params });
       await axios.delete(`http://localhost:5000/class/${active.id}`, { params: second_params });
@@ -373,8 +374,9 @@ export default function ScheduleEdit({ loaderData, params }) {
                   <DraggableSubject
                     key={subject.subject_id}
                     id={subject.sgt_id}
-                    name={subject.name}
+                    name={subject.subject_name}
                     chorarium={subject.chorarium}
+                    teacher={subject.teacher_name}
                   />
                 ))}
               </ul>
