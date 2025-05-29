@@ -378,7 +378,7 @@ export async function findOrCreate(google_id, name, email) {
       if((!result.rows[0].chorarium) || (!result.rows[0].teacher_type)) {
         throw new Error(`not enough data to create teacher`);
       }
-      const id = await pool.query(`select id from Staff where email = $1`, email);
+      const id = await pool.query(`select id from Staff where email = $1`, [email]);
       staffIntoTeacher(id.rows[0].id, result.rows[0].chorarium, result.rows[0].teacher_type);
       return newTeacher.rows[0];
     }
@@ -453,14 +453,14 @@ export async function insertSubjectTeacherGrade(subject_id, grade_id, teacher_id
 }
 
 export async function getTeacherSubjects(teacher_id) {
-  const result = await pool.query(`select Subject.id as subject_id, Subject.name, Subject.chorarium, Subject.term, SGT.id as sgt_id
-  from Subject left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.teacher_id = $1`, [teacher_id]);
+  const result = await pool.query(`select Subject.id as subject_id, Subject.name, Subject.chorarium, Subject.term, SGT.id as sgt_id, Grade.subgroup
+  from Subject left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id left join Grade on SGT.grade_id = Grade.id where SGT.teacher_id = $1`, [teacher_id]);
   return result.rows;
 }
 
 export async function getGradeSubjects(grade_id) {
-  const result = await pool.query(`select Subject.id as subject_id, Subject.name, Subject.chorarium, Subject.term, SGT.id as sgt_id 
-  from Subject left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id where SGT.grade_id = $1`, [grade_id]);
+  const result = await pool.query(`select Subject.id as subject_id, Subject.name as subject_name, Subject.chorarium, Subject.term, SGT.id as sgt_id, Teacher.name as teacher_name
+  from Subject left join SubjectGradeTeacher as SGT on SGT.subject_id = Subject.id left join Teacher on SGT.teacher_id = Teacher.id where SGT.grade_id = $1`, [grade_id]);
   return result.rows;
 }
 

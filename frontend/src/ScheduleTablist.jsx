@@ -6,10 +6,7 @@ import { useState } from 'react';
 export async function clientLoader({ params }) {
   const {data: grades} = await axios.get(`http://localhost:5000/school/${params.schoolId}/grades`);
   const {data: teachers} = await axios.get(`http://localhost:5000/school/${params.schoolId}/teachers`);
-
-  console.log("grades", grades);
-  console.log("teachers", teachers);
-
+  
   return {grades, teachers};
 }
 

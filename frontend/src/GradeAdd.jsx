@@ -12,7 +12,6 @@ const shiftToBG = (shift) => {
 export async function clientLoader({ params }) {
   const {data: shifts} = await axios.get(`http://localhost:5000/shifts`);
   const {data: teachers} = await axios.get(`http://localhost:5000/school/${params.schoolId}/teachers`);
-  console.log(shifts.data);
   return { shifts, teachers };
 }
 
@@ -24,7 +23,6 @@ export async function clientAction({request, params}) {
 }
 
 export default function GradeAdd({loaderData}) {
-  console.log("loader data", loaderData);
   const { shifts, teachers } = loaderData;
 
   return (

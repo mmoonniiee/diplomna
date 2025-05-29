@@ -12,8 +12,7 @@ export async function clientLoader({ params }) {
 export async function clientAction({request, params}) {
   const formData = await request.formData();
   const body = Object.fromEntries(formData);
-  console.log('body params', body);
-  const result = await axios.post(`http://localhost:5000/subject/${params.subjectId}/teacher/${body.teacher_id}/grade/${body.grade_id}`, body);
+  await axios.post(`http://localhost:5000/subject/${params.subjectId}/teacher/${body.teacher_id}/grade/${body.grade_id}`, body);
 }
 
 export default function SubjectAdd({loaderData}) {
